@@ -35,6 +35,7 @@ import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
+import java.util.Base64;
 import java.util.Optional;
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
@@ -129,9 +130,6 @@ public class RStudioCredentialTesterTest {
   }
 
   static final class RespondUserInfoResponseDispatcher extends Dispatcher {
-    private static final String B64MAP =
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    private static final char B64PAD = '=';
     private KeyPair pair;
 
     RespondUserInfoResponseDispatcher(String authenticatedUserResponse) {
@@ -144,69 +142,7 @@ public class RStudioCredentialTesterTest {
       }
     }
 
-    private static char int2char(int i) {
-      return "0123456789abcdefghijklmnopqrstuvwxyz".charAt(i);
-    }
-
-    // this functions converts base64 to hexadecimal
-    private static String base64ToHex(String s) {
-      StringBuilder ret = new StringBuilder();
-      int k = 0;
-      int slop = 0;
-
-      for (int i = 0; i < s.length(); ++i) {
-        char c = s.charAt(i);
-
-        if (c == B64PAD) {
-          break;
-        }
-
-        int v = B64MAP.indexOf(c);
-
-        if (v < 0) {
-          continue;
-        }
-
-        if (k == 0) {
-          ret.append(int2char(v >> 2));
-          slop = v & 3;
-          k = 1;
-        } else if (k == 1) {
-          ret.append(int2char((slop << 2) | (v >> 4)));
-          slop = v & 0xf;
-          k = 2;
-        } else if (k == 2) {
-          ret.append(int2char(slop));
-          ret.append(int2char(v >> 2));
-          slop = v & 3;
-          k = 3;
-        } else {
-          ret.append(int2char((slop << 2) | (v >> 4)));
-          ret.append(int2char(v & 0xf));
-          k = 0;
-        }
-      }
-
-      if (k == 1) {
-        ret.append(int2char(slop << 2));
-      }
-
-      return ret.toString();
-    }
-
-    // this functions converts base64 to a byte array
-    public static byte[] b64toBA(String s) {
-      String hex = base64ToHex(s);
-      int length = hex.length();
-      byte[] byteArray = new byte[length / 2];
-
-      for (int i = 0; 2 * i < length; ++i) {
-        String byteStr = hex.substring(2 * i, 2 * i + 2);
-        byteArray[i] = (byte) Integer.parseInt(byteStr, 16);
-      }
-      return byteArray;
-    }
-
+    
     @Override
     public MockResponse dispatch(RecordedRequest recordedRequest) {
       try {
@@ -229,7 +165,7 @@ public class RStudioCredentialTesterTest {
           Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
           cipher.init(Cipher.DECRYPT_MODE, privateKey);
 
-          byte[] b64Decoded = b64toBA(ciphertext);
+          byte[] b64Decoded = Base64.getDecoder().decode(ciphertext);
           byte[] cipherData = cipher.doFinal(b64Decoded);
 
           String creds = new String(cipherData, StandardCharsets.UTF_8);
