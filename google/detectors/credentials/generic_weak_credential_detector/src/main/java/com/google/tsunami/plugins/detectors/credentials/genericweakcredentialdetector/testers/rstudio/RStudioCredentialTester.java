@@ -58,6 +58,7 @@ public final class RStudioCredentialTester extends CredentialTester {
   private static final String RSTUDIO_HEADER = "RStudio";
   private static final String SERVER_HEADER = "Server";
   private static final String RSTUDIO_UNSUPPORTED_BROWSER_TITLE = "RStudio: Browser Not Supported";
+  private static final String RSTUDIO_UNSUPPORTED_BROWSER_P = "Your web browser is not supported by RStudio.";
 
   private static final String B64MAP =
       "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -132,8 +133,10 @@ public final class RStudioCredentialTester extends CredentialTester {
   private static boolean bodyContainsRStudioElements(String responseBody) {
     Document doc = Jsoup.parse(responseBody);
     String title = doc.title();
+    String p = doc.body().getElementsByTag("p").first().outerHtml().split("<p>")[1].split("</p>")[0];
+    logger.atInfo().log("P TAG %s",p);
 
-    if (title.contains(RSTUDIO_UNSUPPORTED_BROWSER_TITLE)) {
+    if (title.contains(RSTUDIO_UNSUPPORTED_BROWSER_TITLE) && p.contains(RSTUDIO_UNSUPPORTED_BROWSER_P)) {
       logger.atInfo().log("Found RStudio endpoint");
       return true;
     } else {
@@ -150,7 +153,6 @@ public final class RStudioCredentialTester extends CredentialTester {
         .collect(toImmutableList());
   }
 
-  // need to add the user-agent stuff in order to make everything work
   private boolean isRStudioAccessible(NetworkService networkService, TestCredential credential) {
     var url = buildTargetUrl(networkService, "auth-public-key");
     try {
@@ -185,6 +187,7 @@ public final class RStudioCredentialTester extends CredentialTester {
     }
   }
 
+  // This function is the same used from the javascript code in order to base64 encode the hexadecimal ciphertext. 
   private String hexToBase64(String hex) {
     StringBuilder ret = new StringBuilder();
 
