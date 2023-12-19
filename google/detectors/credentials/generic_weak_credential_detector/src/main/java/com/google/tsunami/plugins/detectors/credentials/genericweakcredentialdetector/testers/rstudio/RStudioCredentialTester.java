@@ -167,9 +167,12 @@ public final class RStudioCredentialTester extends CredentialTester {
           url, credential.username(), credential.password().orElse(""));
       response = sendRequestWithCredentials(url, credential, exponent, modulus);
 
-      if (response.headers().get("Set-Cookie").isPresent()
-          && response.headers().get("Set-Cookie").get().trim().startsWith("user-id")) {
-        return true;
+      if (response.headers().get("Set-Cookie").isPresent()) {
+        for(String s : response.headers().getAll("Set-Cookie")){
+          if(s.contains("user-id="+credential.username())){
+            return true;
+          }
+        }
       } else {
         return false;
       }
@@ -182,11 +185,11 @@ public final class RStudioCredentialTester extends CredentialTester {
         | NoSuchPaddingException
         | InvalidKeySpecException e) {
       logger.atWarning().withCause(e).log("Unable to query '%s'.", url);
-      return false;
     }
+    return false;
   }
 
-  // This function is the same used from the javascript code in order to base64 encode the hexadecimal ciphertext. 
+  // This function base64 encodes provided cipertext string in hex. 
   private String hexToBase64(String hex) {
     StringBuilder ret = new StringBuilder();
 
@@ -218,7 +221,7 @@ public final class RStudioCredentialTester extends CredentialTester {
           InvalidKeySpecException,
           IOException,
           NoSuchProviderException {
-    // encrypting with RSA PCKS#1 version 2
+    // Encrypting with RSA PCKS#1 version 2.
     RSAPublicKeySpec spec =
         new RSAPublicKeySpec(new BigInteger(modulus, 16), new BigInteger(exponent, 16));
     KeyFactory factory = KeyFactory.getInstance("RSA");
@@ -233,14 +236,13 @@ public final class RStudioCredentialTester extends CredentialTester {
     sb.append(credential.password().get());
     byte[] cipherData = cipher.doFinal(sb.toString().getBytes());
 
-    // converting the ciphertext to hex
+    // Converting the ciphertext to hex.
     sb = new StringBuilder();
     for (byte b : cipherData) {
       sb.append(String.format("%02X", b));
     }
 
     String ciphertext = this.hexToBase64(sb.toString().toLowerCase());
-
     var headers =
         HttpHeaders.builder()
             .addHeader("Cookie", "rs-csrf-token=1")

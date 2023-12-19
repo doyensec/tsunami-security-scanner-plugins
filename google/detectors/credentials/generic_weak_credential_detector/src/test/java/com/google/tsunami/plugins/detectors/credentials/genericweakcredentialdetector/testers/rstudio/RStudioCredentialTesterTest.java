@@ -61,7 +61,7 @@ public class RStudioCredentialTesterTest {
       TestCredential.create("root", Optional.of("pass"));
   private static final TestCredential WRONG_CRED_1 =
       TestCredential.create("wrong", Optional.of("pass"));
-  private static final ServiceContext.Builder rstudioServiceContext =
+  private static final ServiceContext.Builder RSTUDIO_SERVICE_CONTEXT =
       ServiceContext.newBuilder()
           .setWebServiceContext(
               WebServiceContext.newBuilder().setSoftware(Software.newBuilder().setName("rstudio")));
@@ -80,7 +80,7 @@ public class RStudioCredentialTesterTest {
             .setNetworkEndpoint(
                 forHostnameAndPort(mockWebServer.getHostName(), mockWebServer.getPort()))
             .setServiceName("http")
-            .setServiceContext(rstudioServiceContext)
+            .setServiceContext(RSTUDIO_SERVICE_CONTEXT)
             .setSoftware(Software.newBuilder().setName("http"))
             .build();
     assertThat(tester.testValidCredentials(targetNetworkService, ImmutableList.of(WEAK_CRED_1)))
@@ -96,7 +96,7 @@ public class RStudioCredentialTesterTest {
             .setNetworkEndpoint(
                 forHostnameAndPort(mockWebServer.getHostName(), mockWebServer.getPort()))
             .setServiceName("http")
-            .setServiceContext(rstudioServiceContext)
+            .setServiceContext(RSTUDIO_SERVICE_CONTEXT)
             .build();
 
     assertThat(
@@ -115,7 +115,7 @@ public class RStudioCredentialTesterTest {
             .setNetworkEndpoint(
                 forHostnameAndPort(mockWebServer.getHostName(), mockWebServer.getPort()))
             .setServiceName("http")
-            .setServiceContext(rstudioServiceContext)
+            .setServiceContext(RSTUDIO_SERVICE_CONTEXT)
             .build();
 
     assertThat(tester.testValidCredentials(targetNetworkService, ImmutableList.of(WRONG_CRED_1)))
@@ -142,7 +142,6 @@ public class RStudioCredentialTesterTest {
       }
     }
 
-    
     @Override
     public MockResponse dispatch(RecordedRequest recordedRequest) {
       try {
