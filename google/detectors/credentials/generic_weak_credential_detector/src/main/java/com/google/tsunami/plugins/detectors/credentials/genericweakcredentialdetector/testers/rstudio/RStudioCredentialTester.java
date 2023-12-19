@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.google.tsunami.plugins.detectors.credentials.genericweakcredentialdetector.testers.rstudio;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -50,6 +51,7 @@ import javax.inject.Inject;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 
+/** Credential tester specifically for rstudio. */
 public final class RStudioCredentialTester extends CredentialTester {
   private static final GoogleLogger logger = GoogleLogger.forEnclosingClass();
   private final HttpClient httpClient;
@@ -58,7 +60,8 @@ public final class RStudioCredentialTester extends CredentialTester {
   private static final String RSTUDIO_HEADER = "RStudio";
   private static final String SERVER_HEADER = "Server";
   private static final String RSTUDIO_UNSUPPORTED_BROWSER_TITLE = "RStudio: Browser Not Supported";
-  private static final String RSTUDIO_UNSUPPORTED_BROWSER_P = "Your web browser is not supported by RStudio.";
+  private static final String RSTUDIO_UNSUPPORTED_BROWSER_P =
+      "Your web browser is not supported by RStudio.";
 
   private static final String B64MAP =
       "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -133,9 +136,11 @@ public final class RStudioCredentialTester extends CredentialTester {
   private static boolean bodyContainsRStudioElements(String responseBody) {
     Document doc = Jsoup.parse(responseBody);
     String title = doc.title();
-    String p = doc.body().getElementsByTag("p").first().outerHtml().split("<p>")[1].split("</p>")[0];
+    String p =
+        doc.body().getElementsByTag("p").first().outerHtml().split("<p>")[1].split("</p>")[0];
 
-    if (title.contains(RSTUDIO_UNSUPPORTED_BROWSER_TITLE) && p.contains(RSTUDIO_UNSUPPORTED_BROWSER_P)) {
+    if (title.contains(RSTUDIO_UNSUPPORTED_BROWSER_TITLE)
+        && p.contains(RSTUDIO_UNSUPPORTED_BROWSER_P)) {
       logger.atInfo().log("Found RStudio endpoint");
       return true;
     } else {
@@ -168,8 +173,8 @@ public final class RStudioCredentialTester extends CredentialTester {
       response = sendRequestWithCredentials(url, credential, exponent, modulus);
 
       if (response.headers().get("Set-Cookie").isPresent()) {
-        for(String s : response.headers().getAll("Set-Cookie")){
-          if(s.contains("user-id="+credential.username())){
+        for (String s : response.headers().getAll("Set-Cookie")) {
+          if (s.contains("user-id=" + credential.username())) {
             return true;
           }
         }
@@ -189,7 +194,7 @@ public final class RStudioCredentialTester extends CredentialTester {
     return false;
   }
 
-  // This function base64 encodes provided cipertext string in hex. 
+  // This function base64 encodes provided cipertext string in hex.
   private String hexToBase64(String hex) {
     StringBuilder ret = new StringBuilder();
 
