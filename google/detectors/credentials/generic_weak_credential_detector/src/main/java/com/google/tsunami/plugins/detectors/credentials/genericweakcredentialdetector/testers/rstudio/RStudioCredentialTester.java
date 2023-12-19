@@ -134,7 +134,6 @@ public final class RStudioCredentialTester extends CredentialTester {
     Document doc = Jsoup.parse(responseBody);
     String title = doc.title();
     String p = doc.body().getElementsByTag("p").first().outerHtml().split("<p>")[1].split("</p>")[0];
-    logger.atInfo().log("P TAG %s",p);
 
     if (title.contains(RSTUDIO_UNSUPPORTED_BROWSER_TITLE) && p.contains(RSTUDIO_UNSUPPORTED_BROWSER_P)) {
       logger.atInfo().log("Found RStudio endpoint");
