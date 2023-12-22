@@ -51,7 +51,7 @@ import javax.inject.Inject;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 
-/** Credential tester specifically for rstudio. */
+/** Credential tester for RStudio. */
 public final class RStudioCredentialTester extends CredentialTester {
   private static final GoogleLogger logger = GoogleLogger.forEnclosingClass();
   private final HttpClient httpClient;
