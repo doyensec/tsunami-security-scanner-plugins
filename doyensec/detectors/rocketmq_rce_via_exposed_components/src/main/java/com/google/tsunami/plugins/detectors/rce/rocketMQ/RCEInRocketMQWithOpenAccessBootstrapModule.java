@@ -15,17 +15,21 @@
  */
 package com.google.tsunami.plugins.detectors.rce.rocketMQ;
 
+import com.google.inject.Key;
+import com.google.inject.multibindings.OptionalBinder;
 import com.google.tsunami.plugin.PluginBootstrapModule;
+import com.google.tsunami.plugins.detectors.rce.rocketMQ.RCEInRocketMQWithOpenAccessDetector.SocketFactoryInstance;
+import javax.net.SocketFactory;
 
 /** An example Guice module that bootstraps the {@link RCEInRocketMQWithOpenAccessDetector}. */
 public final class RCEInRocketMQWithOpenAccessBootstrapModule extends PluginBootstrapModule {
 
   @Override
   protected void configurePlugin() {
-    // Tsunami relies heavily on Guice (https://github.com/google/guice). All Guice bindings for
-    // your plugin should be implemented here.
-
-    // registerPlugin method is required in order for the Tsunami scanner to identify your plugin.
+    OptionalBinder.newOptionalBinder(
+            binder(), Key.get(SocketFactory.class, SocketFactoryInstance.class))
+        .setDefault()
+        .toInstance(SocketFactory.getDefault());
     registerPlugin(RCEInRocketMQWithOpenAccessDetector.class);
   }
 }
