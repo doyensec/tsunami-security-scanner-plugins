@@ -19,7 +19,6 @@ import static com.google.tsunami.common.data.NetworkEndpointUtils.forHostnameAnd
 
 import com.google.protobuf.util.Timestamps;
 import com.google.tsunami.common.time.testing.FakeUtcClock;
-import com.google.tsunami.plugins.detectors.rce.rocketMQ.RCEInRocketMQWithOpenAccessDetector;
 import com.google.tsunami.proto.AdditionalDetail;
 import com.google.tsunami.proto.DetectionReport;
 import com.google.tsunami.proto.DetectionStatus;
@@ -38,117 +37,82 @@ import okhttp3.mockwebserver.MockWebServer;
 /** Helper class for shared methods in this test suite */
 final class TestHelper {
 
-    private TestHelper() {}
+  private TestHelper() {}
 
-    static NetworkService createRocketMQService(MockWebServer mockService) {
-        return NetworkService.newBuilder()
-            .setNetworkEndpoint(
-                forHostnameAndPort(
-                    mockService.getHostName(),
-                    mockService.getPort()
-                )
-            )
-            .setTransportProtocol(TransportProtocol.TCP)
-            .setSoftware(Software.newBuilder().setName("RocketMQ API"))
-            .setServiceName("http")
-            .build();
-    }
+  static NetworkService createRocketMQService(MockWebServer mockService) {
+    return NetworkService.newBuilder()
+        .setNetworkEndpoint(forHostnameAndPort(mockService.getHostName(), mockService.getPort()))
+        .setTransportProtocol(TransportProtocol.TCP)
+        .setSoftware(Software.newBuilder().setName("RocketMQ API"))
+        .setServiceName("http")
+        .build();
+  }
 
-    static TargetInfo buildTargetInfo(NetworkEndpoint networkEndpoint) {
-        return TargetInfo.newBuilder()
-            .addNetworkEndpoints(networkEndpoint)
-            .build();
-    }
+  static TargetInfo buildTargetInfo(NetworkEndpoint networkEndpoint) {
+    return TargetInfo.newBuilder().addNetworkEndpoints(networkEndpoint).build();
+  }
 
-    static DetectionReport buildValidDetectionReportHigh(
-        TargetInfo target,
-        NetworkService service,
-        FakeUtcClock fakeUtcClock
-    ) {
-        return DetectionReport.newBuilder()
-            .setTargetInfo(target)
-            .setNetworkService(service)
-            .setDetectionTimestamp(
-                Timestamps.fromMillis(Instant.now(fakeUtcClock).toEpochMilli())
-            )
-            .setDetectionStatus(DetectionStatus.VULNERABILITY_VERIFIED)
-            .setVulnerability(
-                Vulnerability.newBuilder()
-                    .setMainId(
-                        VulnerabilityId.newBuilder()
-                            .setPublisher(
-                                RCEInRocketMQWithOpenAccessDetector.VULNERABILITY_REPORT_PUBLISHER
-                            )
-                            .setValue(
-                                RCEInRocketMQWithOpenAccessDetector.VULNERABILITY_REPORT_ID
-                            )
-                    )
-                    .setSeverity(Severity.HIGH)
-                    .setTitle(
-                        RCEInRocketMQWithOpenAccessDetector.VULNERABILITY_REPORT_TITLE
-                    )
-                    .setDescription(
-                        RCEInRocketMQWithOpenAccessDetector.VULNERABILITY_REPORT_DESCRIPTION
-                    )
-                    .setRecommendation(
-                        RCEInRocketMQWithOpenAccessDetector.VULNERABILITY_REPORT_RECOMMENDATION
-                    )
-                    .addAdditionalDetails(
-                        AdditionalDetail.newBuilder()
-                            .setTextData(
-                                TextData.newBuilder()
-                                    .setText(
-                                        RCEInRocketMQWithOpenAccessDetector.VULNERABILITY_REPORT_DETAILS
-                                    )
-                            )
-                    )
-            )
-            .build();
-    }
+  static DetectionReport buildValidDetectionReportHigh(
+      TargetInfo target, NetworkService service, FakeUtcClock fakeUtcClock) {
+    return DetectionReport.newBuilder()
+        .setTargetInfo(target)
+        .setNetworkService(service)
+        .setDetectionTimestamp(Timestamps.fromMillis(Instant.now(fakeUtcClock).toEpochMilli()))
+        .setDetectionStatus(DetectionStatus.VULNERABILITY_VERIFIED)
+        .setVulnerability(
+            Vulnerability.newBuilder()
+                .setMainId(
+                    VulnerabilityId.newBuilder()
+                        .setPublisher(
+                            ApacheRocketMQCVE202333246RCEVulnDetector
+                                .VULNERABILITY_REPORT_PUBLISHER)
+                        .setValue(
+                            ApacheRocketMQCVE202333246RCEVulnDetector.VULNERABILITY_REPORT_ID))
+                .setSeverity(Severity.HIGH)
+                .setTitle(ApacheRocketMQCVE202333246RCEVulnDetector.VULNERABILITY_REPORT_TITLE)
+                .setDescription(
+                    ApacheRocketMQCVE202333246RCEVulnDetector.VULNERABILITY_REPORT_DESCRIPTION)
+                .setRecommendation(
+                    ApacheRocketMQCVE202333246RCEVulnDetector.VULNERABILITY_REPORT_RECOMMENDATION)
+                .addAdditionalDetails(
+                    AdditionalDetail.newBuilder()
+                        .setTextData(
+                            TextData.newBuilder()
+                                .setText(
+                                    ApacheRocketMQCVE202333246RCEVulnDetector
+                                        .VULNERABILITY_REPORT_DETAILS))))
+        .build();
+  }
 
-    static DetectionReport buildValidDetectionReportCritical(
-        TargetInfo target,
-        NetworkService service,
-        FakeUtcClock fakeUtcClock
-    ) {
-        return DetectionReport.newBuilder()
-            .setTargetInfo(target)
-            .setNetworkService(service)
-            .setDetectionTimestamp(
-                Timestamps.fromMillis(Instant.now(fakeUtcClock).toEpochMilli())
-            )
-            .setDetectionStatus(DetectionStatus.VULNERABILITY_VERIFIED)
-            .setVulnerability(
-                Vulnerability.newBuilder()
-                    .setMainId(
-                        VulnerabilityId.newBuilder()
-                            .setPublisher(
-                                RCEInRocketMQWithOpenAccessDetector.VULNERABILITY_REPORT_PUBLISHER
-                            )
-                            .setValue(
-                                RCEInRocketMQWithOpenAccessDetector.VULNERABILITY_REPORT_ID
-                            )
-                    )
-                    .setSeverity(Severity.CRITICAL)
-                    .setTitle(
-                        RCEInRocketMQWithOpenAccessDetector.VULNERABILITY_REPORT_TITLE
-                    )
-                    .setDescription(
-                        RCEInRocketMQWithOpenAccessDetector.VULNERABILITY_REPORT_DESCRIPTION
-                    )
-                    .setRecommendation(
-                        RCEInRocketMQWithOpenAccessDetector.VULNERABILITY_REPORT_RECOMMENDATION
-                    )
-                    .addAdditionalDetails(
-                        AdditionalDetail.newBuilder()
-                            .setTextData(
-                                TextData.newBuilder()
-                                    .setText(
-                                        RCEInRocketMQWithOpenAccessDetector.VULNERABILITY_REPORT_DETAILS
-                                    )
-                            )
-                    )
-            )
-            .build();
-    }
+  static DetectionReport buildValidDetectionReportCritical(
+      TargetInfo target, NetworkService service, FakeUtcClock fakeUtcClock) {
+    return DetectionReport.newBuilder()
+        .setTargetInfo(target)
+        .setNetworkService(service)
+        .setDetectionTimestamp(Timestamps.fromMillis(Instant.now(fakeUtcClock).toEpochMilli()))
+        .setDetectionStatus(DetectionStatus.VULNERABILITY_VERIFIED)
+        .setVulnerability(
+            Vulnerability.newBuilder()
+                .setMainId(
+                    VulnerabilityId.newBuilder()
+                        .setPublisher(
+                            ApacheRocketMQCVE202333246RCEVulnDetector
+                                .VULNERABILITY_REPORT_PUBLISHER)
+                        .setValue(
+                            ApacheRocketMQCVE202333246RCEVulnDetector.VULNERABILITY_REPORT_ID))
+                .setSeverity(Severity.CRITICAL)
+                .setTitle(ApacheRocketMQCVE202333246RCEVulnDetector.VULNERABILITY_REPORT_TITLE)
+                .setDescription(
+                    ApacheRocketMQCVE202333246RCEVulnDetector.VULNERABILITY_REPORT_DESCRIPTION)
+                .setRecommendation(
+                    ApacheRocketMQCVE202333246RCEVulnDetector.VULNERABILITY_REPORT_RECOMMENDATION)
+                .addAdditionalDetails(
+                    AdditionalDetail.newBuilder()
+                        .setTextData(
+                            TextData.newBuilder()
+                                .setText(
+                                    ApacheRocketMQCVE202333246RCEVulnDetector
+                                        .VULNERABILITY_REPORT_DETAILS))))
+        .build();
+  }
 }

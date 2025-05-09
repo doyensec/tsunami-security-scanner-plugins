@@ -59,25 +59,39 @@ import javax.net.SocketFactory;
 /** A Tsunami plugin that detects RCE in RocketMQ exposed broker */
 @PluginInfo(
     type = PluginType.VULN_DETECTION,
-    name = "RCEInRocketMQWithOpenAccessDetector",
+    name = "ApacheRocketMQCVE202333246RCEVulnDetector",
     version = "0.1",
     description = "This plugin detects RCE in RocketMQ exposed broker",
     author = "Alessandro Versari (alessandro.versari@doyensec.com)",
-    bootstrapModule = RCEInRocketMQWithOpenAccessBootstrapModule.class)
-public final class RCEInRocketMQWithOpenAccessDetector implements VulnDetector {
-
-  @VisibleForTesting static final String VULNERABILITY_REPORT_PUBLISHER = "TSUNAMI_COMMUNITY";
-
-  @VisibleForTesting static final String VULNERABILITY_REPORT_ID = "ROCKET_MQ_WITH_OPEN_ACCESS";
+    bootstrapModule = ApacheRocketMQCVE202333246RCEVulnDetectorBootstrapModule.class)
+public final class ApacheRocketMQCVE202333246RCEVulnDetector implements VulnDetector {
 
   @VisibleForTesting
-  static final String VULNERABILITY_REPORT_TITLE = "RocketMq Open Access Remote Code Execution";
+  public static final String VULNERABILITY_REPORT_PUBLISHER = "TSUNAMI_COMMUNITY";
 
-  @VisibleForTesting static final String VULNERABILITY_REPORT_DESCRIPTION = "";
+  @VisibleForTesting public static final String VULNERABILITY_REPORT_ID = "CVE-2023-33246";
 
-  @VisibleForTesting static final String VULNERABILITY_REPORT_RECOMMENDATION = "";
+  @VisibleForTesting
+  public static final String VULNERABILITY_REPORT_TITLE =
+      "RocketMQ Open Access Remote Code Execution";
 
-  @VisibleForTesting static final String VULNERABILITY_REPORT_DETAILS = "";
+  @VisibleForTesting
+  public static final String VULNERABILITY_REPORT_DESCRIPTION =
+      "In Apache RocketMQ versions up to 4.9.6 and 5.1.0, unauthenticated attackers can exploit "
+          + "a misconfigured update configuration function to execute arbitrary system commands, "
+          + "potentially leading to full system compromise.";
+
+  @VisibleForTesting
+  public static final String VULNERABILITY_REPORT_RECOMMENDATION =
+      "Upgrade to RocketMQ version 4.9.6 or later for the 4.x series, or 5.1.1 or later for the 5.x"
+          + " series.";
+
+  @VisibleForTesting
+  public static final String VULNERABILITY_REPORT_DETAILS =
+      "This vulnerability arises due to insufficient permission verification in the update"
+          + " configuration function of RocketMQ's NameServer, Broker, and Controller components."
+          + " By sending specially crafted binary payloads, attackers can manipulate configurations"
+          + " and execute arbitrary system commands.";
 
   private static final Duration BATCH_REQUEST_WAIT_AFTER_TIMEOUT = Duration.ofSeconds(5);
 
@@ -96,7 +110,7 @@ public final class RCEInRocketMQWithOpenAccessDetector implements VulnDetector {
       "`{\"code\":12,\"flag\":0,\"language\":\"JAVA\",\"opaque\":0,\"serializeTypeCurrentRPC\":\"JSON\",\"version\":500}\n";
 
   @Inject
-  RCEInRocketMQWithOpenAccessDetector(
+  ApacheRocketMQCVE202333246RCEVulnDetector(
       @SocketFactoryInstance SocketFactory socketFactory,
       @UtcClock Clock utcClock,
       PayloadGenerator payloadGenerator)
@@ -110,7 +124,7 @@ public final class RCEInRocketMQWithOpenAccessDetector implements VulnDetector {
   @Override
   public DetectionReportList detect(
       TargetInfo targetInfo, ImmutableList<NetworkService> matchedServices) {
-    logger.atInfo().log("RCEInRocketMQWithOpenAccessDetector starts detecting.");
+    logger.atInfo().log("ApacheRocketMQCVE202333246RCEVulnDetector starts detecting.");
 
     return DetectionReportList.newBuilder()
         .addAllDetectionReports(
