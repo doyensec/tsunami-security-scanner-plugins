@@ -15,14 +15,13 @@
  */
 package com.google.tsunami.plugins.detectors.rce.rocketMQ;
 
-import static com.google.tsunami.common.data.NetworkEndpointUtils.forHostnameAndPort;
+import static com.google.tsunami.common.data.NetworkEndpointUtils.forIpAndPort;
 
 import com.google.protobuf.util.Timestamps;
 import com.google.tsunami.common.time.testing.FakeUtcClock;
 import com.google.tsunami.proto.AdditionalDetail;
 import com.google.tsunami.proto.DetectionReport;
 import com.google.tsunami.proto.DetectionStatus;
-import com.google.tsunami.proto.NetworkEndpoint;
 import com.google.tsunami.proto.NetworkService;
 import com.google.tsunami.proto.Severity;
 import com.google.tsunami.proto.Software;
@@ -40,47 +39,11 @@ final class TestHelper {
   private TestHelper() {}
 
   static NetworkService createRocketMQService(MockWebServer mockService) {
+
     return NetworkService.newBuilder()
-        .setNetworkEndpoint(forHostnameAndPort(mockService.getHostName(), mockService.getPort()))
+        .setNetworkEndpoint(forIpAndPort("127.0.0.1", 1234))
         .setTransportProtocol(TransportProtocol.TCP)
-        .setSoftware(Software.newBuilder().setName("RocketMQ API"))
-        .setServiceName("http")
-        .build();
-  }
-
-  static TargetInfo buildTargetInfo(NetworkEndpoint networkEndpoint) {
-    return TargetInfo.newBuilder().addNetworkEndpoints(networkEndpoint).build();
-  }
-
-  static DetectionReport buildValidDetectionReportHigh(
-      TargetInfo target, NetworkService service, FakeUtcClock fakeUtcClock) {
-    return DetectionReport.newBuilder()
-        .setTargetInfo(target)
-        .setNetworkService(service)
-        .setDetectionTimestamp(Timestamps.fromMillis(Instant.now(fakeUtcClock).toEpochMilli()))
-        .setDetectionStatus(DetectionStatus.VULNERABILITY_VERIFIED)
-        .setVulnerability(
-            Vulnerability.newBuilder()
-                .setMainId(
-                    VulnerabilityId.newBuilder()
-                        .setPublisher(
-                            ApacheRocketMQCVE202333246RCEVulnDetector
-                                .VULNERABILITY_REPORT_PUBLISHER)
-                        .setValue(
-                            ApacheRocketMQCVE202333246RCEVulnDetector.VULNERABILITY_REPORT_ID))
-                .setSeverity(Severity.HIGH)
-                .setTitle(ApacheRocketMQCVE202333246RCEVulnDetector.VULNERABILITY_REPORT_TITLE)
-                .setDescription(
-                    ApacheRocketMQCVE202333246RCEVulnDetector.VULNERABILITY_REPORT_DESCRIPTION)
-                .setRecommendation(
-                    ApacheRocketMQCVE202333246RCEVulnDetector.VULNERABILITY_REPORT_RECOMMENDATION)
-                .addAdditionalDetails(
-                    AdditionalDetail.newBuilder()
-                        .setTextData(
-                            TextData.newBuilder()
-                                .setText(
-                                    ApacheRocketMQCVE202333246RCEVulnDetector
-                                        .VULNERABILITY_REPORT_DETAILS))))
+        .setSoftware(Software.newBuilder().setName("RocketMQ"))
         .build();
   }
 

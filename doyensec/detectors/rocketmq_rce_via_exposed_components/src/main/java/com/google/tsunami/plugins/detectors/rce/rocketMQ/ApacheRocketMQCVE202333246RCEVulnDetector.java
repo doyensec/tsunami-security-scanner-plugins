@@ -93,9 +93,9 @@ public final class ApacheRocketMQCVE202333246RCEVulnDetector implements VulnDete
           + " By sending specially crafted binary payloads, attackers can manipulate configurations"
           + " and execute arbitrary system commands.";
 
-  private static final Duration BATCH_REQUEST_WAIT_AFTER_TIMEOUT = Duration.ofSeconds(5);
+  @VisibleForTesting public static final Duration OOB_SLEEP_DURATION = Duration.ofSeconds(5);
 
-  Severity vulnSeverity = Severity.CRITICAL;
+  private static final Severity vulnSeverity = Severity.CRITICAL;
 
   private final SocketFactory socketFactory;
 
@@ -228,7 +228,7 @@ public final class ApacheRocketMQCVE202333246RCEVulnDetector implements VulnDete
       return false;
     }
 
-    Uninterruptibles.sleepUninterruptibly(BATCH_REQUEST_WAIT_AFTER_TIMEOUT);
+    Uninterruptibles.sleepUninterruptibly(OOB_SLEEP_DURATION);
 
     if (callbackPayload.checkIfExecuted()) {
       logger.atInfo().log("Target %s is vulnerable", hp.toString());
