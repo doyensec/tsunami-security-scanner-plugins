@@ -15,6 +15,10 @@
  */
 package com.google.tsunami.plugins.detectors.wordpress_plugin_cve_2021_39316;
 
+import static com.google.common.truth.extensions.proto.ProtoTruth.assertThat;
+import static com.google.tsunami.common.data.NetworkEndpointUtils.forHostname;
+import static com.google.tsunami.common.data.NetworkEndpointUtils.forHostnameAndPort;
+
 import com.google.common.collect.ImmutableList;
 import com.google.inject.Guice;
 import com.google.protobuf.util.Timestamps;
@@ -22,6 +26,9 @@ import com.google.tsunami.common.net.http.HttpClientModule;
 import com.google.tsunami.common.time.testing.FakeUtcClock;
 import com.google.tsunami.common.time.testing.FakeUtcClockModule;
 import com.google.tsunami.proto.*;
+import java.io.IOException;
+import java.time.Instant;
+import javax.inject.Inject;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import org.junit.After;
@@ -29,14 +36,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-
-import javax.inject.Inject;
-import java.io.IOException;
-import java.time.Instant;
-
-import static com.google.common.truth.extensions.proto.ProtoTruth.assertThat;
-import static com.google.tsunami.common.data.NetworkEndpointUtils.forHostname;
-import static com.google.tsunami.common.data.NetworkEndpointUtils.forHostnameAndPort;
 
 /** Unit tests for {@link CVE202139316VulnDetector}. */
 @RunWith(JUnit4.class)
@@ -102,10 +101,10 @@ public final class Cve202139316DetectorTest {
                         .setSeverity(Severity.HIGH)
                         .setTitle("CVE-2021-39316")
                         .setDescription(
-                            "The Zoomsounds plugin <= 6.45 for WordPress allows arbitrary files, "
-                                + "including sensitive configuration files such as wp-config.php, to be "
-                                + "downloaded via the `dzsap_download` action using directory traversal in the "
-                                + "`link` parameter."))
+                            "The Zoomsounds plugin <= 6.45 for WordPress allows arbitrary files,"
+                                + " including sensitive configuration files such as wp-config.php,"
+                                + " to be downloaded via the `dzsap_download` action using"
+                                + " directory traversal in the `link` parameter."))
                 .build());
   }
 

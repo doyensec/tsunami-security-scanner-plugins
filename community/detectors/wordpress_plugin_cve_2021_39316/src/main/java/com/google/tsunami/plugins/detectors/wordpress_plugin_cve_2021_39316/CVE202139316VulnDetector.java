@@ -37,21 +37,20 @@ import com.google.tsunami.proto.Severity;
 import com.google.tsunami.proto.TargetInfo;
 import com.google.tsunami.proto.Vulnerability;
 import com.google.tsunami.proto.VulnerabilityId;
-
 import java.io.IOException;
 import java.time.Clock;
 import java.time.Instant;
-import javax.inject.Inject;
 import java.util.regex.Pattern;
+import javax.inject.Inject;
 
 @PluginInfo(
     type = PluginType.VULN_DETECTION,
     name = "CVE-2021-39316",
     version = "0.1",
     description =
-        "The Zoomsounds plugin <= 6.45 for WordPress allows arbitrary files, including sensitive configuration files "
-            + "such as wp-config.php, to be downloaded via the `dzsap_download` action using directory traversal in"
-            + " the `link` parameter.",
+        "The Zoomsounds plugin <= 6.45 for WordPress allows arbitrary files, including sensitive"
+            + " configuration files such as wp-config.php, to be downloaded via the"
+            + " `dzsap_download` action using directory traversal in the `link` parameter.",
     author = "hh-hunter",
     bootstrapModule = CVE202139316DetectorBootstrapModule.class)
 public final class CVE202139316VulnDetector implements VulnDetector {
@@ -125,10 +124,10 @@ public final class CVE202139316VulnDetector implements VulnDetector {
                 .setSeverity(Severity.HIGH)
                 .setTitle("CVE-2021-39316")
                 .setDescription(
-                    "The Zoomsounds plugin <= 6.45 for WordPress allows arbitrary files, "
-                        + "including sensitive configuration files such as wp-config.php, to be "
-                        + "downloaded via the `dzsap_download` action using directory traversal in the "
-                        + "`link` parameter."))
+                    "The Zoomsounds plugin <= 6.45 for WordPress allows arbitrary files, including"
+                        + " sensitive configuration files such as wp-config.php, to be downloaded"
+                        + " via the `dzsap_download` action using directory traversal in the `link`"
+                        + " parameter."))
         .build();
   }
 }
