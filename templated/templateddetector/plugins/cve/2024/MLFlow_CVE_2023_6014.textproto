@@ -50,7 +50,7 @@ actions: {
     uri: "/"
     headers: { name: "User-Agent" value: "TSUNAMI_SCANNER"}
     response: {
-      http_status: 200
+      http_status: 401
       expect_all: {
         conditions: [
           { body: {} contains: 'mlflow' }
