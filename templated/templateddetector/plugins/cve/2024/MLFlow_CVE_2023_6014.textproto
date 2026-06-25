@@ -41,6 +41,8 @@ finding: {
 # ACTIONS #
 ###########
 
+# our fingerprint needs to be weak/different because a properly configured version will say auth is needed.
+
 actions: {
   name: "fingerprint_mlflow"
   http_request: {
@@ -51,7 +53,7 @@ actions: {
       http_status: 200
       expect_all: {
         conditions: [
-          { body: {} contains: '<title>MLflow</title>' }
+          { body: {} contains: 'mlflow' }
         ]
       }
     }
