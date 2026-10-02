@@ -101,7 +101,7 @@ actions: {
 actions: {
   name: "delete_router"
   http_request: {
-    method: GET
+    method: DELETE
     uri: "/actuator/gateway/routes/{{ T_UTL_CURRENT_TIMESTAMP_MS }}"
     response: {
       http_status: 200
