@@ -42,7 +42,6 @@ finding: {
 # ACTIONS #
 ###########
 
-# Original didn't have this but we include it just in case. Only a light check.
 
 actions: {
   name: "fingerprint_teamcity"
