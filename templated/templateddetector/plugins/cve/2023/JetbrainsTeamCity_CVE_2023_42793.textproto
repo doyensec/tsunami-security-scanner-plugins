@@ -49,9 +49,10 @@ actions: {
     method: GET
     uri: "/"
     response: {
-      expect_all: {
+      expect_any: {
         conditions: [
-          { body: {} contains: "TeamCity" }
+          { body: {} contains: "TeamCity" },
+          { header: { name: "WWW-Authenticate" } contains: "TeamCity" }
         ]
       }
     }
@@ -87,6 +88,9 @@ actions: {
       }
     }
   }
+  # we put our refresh and disable debug mode cleanup actions here too, since
+  # if we do it in the "enable_debug_mode" step, the token would be deleted first.
+  cleanup_actions: ["disable_debug_mode", "refresh_server", "delete_existing_token"]
 }
 
 actions: {
@@ -94,6 +98,20 @@ actions: {
   http_request: {
     method: POST
     uri: "/admin/dataDir.html?action=edit&fileName=config%2Finternal.properties&content=rest.debug.processes.enable=true"
+    headers: [
+      { name: "Authorization" value: "Bearer {{ TOKEN }}" }
+    ]
+    response: {
+      http_status: 200
+    }
+  }
+}
+
+actions: {
+  name: "disable_debug_mode"
+  http_request: {
+    method: POST
+    uri: "/admin/dataDir.html?action=edit&fileName=config%2Finternal.properties&content=rest.debug.processes.enable=false"
     headers: [
       { name: "Authorization" value: "Bearer {{ TOKEN }}" }
     ]
