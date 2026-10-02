@@ -19,7 +19,7 @@ finding: {
     publisher: "TSUNAMI_COMMUNITY"
     value: "CVE_2023_6014"
   }
-  severity: CRITICAL
+  severity: HIGH
   title: "MLFlow Auth Bypass Vulnerability (CVE-2023-6014)"
   description: 
     "On MLflow versions prior to 2.8.0, unauthenticated users are able to arbitrarily create an"
@@ -29,7 +29,7 @@ finding: {
     " than version 2.8.0, and check the user list for potential users that"
     " were created by exploiting this vulnerability. Note that there are later CVEs,"
     " so it's best to update to the latest version.\n IMPORTANT NOTE: This scan "
-    "confirmed the vulnerability by creating a user with username 'TSUNAMI_USER'"
+    "confirmed the vulnerability by creating a user with username 'TSUNAMI_USER_<TIMESTAMP>'"
     " and an insecure password, so make sure you delete that user."
   related_id: {
     publisher: "CVE"
@@ -72,7 +72,7 @@ actions: {
       { name: "User-Agent" value: "TSUNAMI_SCANNER"},
       { name: "Content-Type" value: "application/x-www-form-urlencoded"}
     ]
-    data: "username=TSUNAMI_USER&password={{ T_UTL_CURRENT_TIMESTAMP_MS }}"
+    data: "username=TSUNAMI_USER_{{ T_UTL_CURRENT_TIMESTAMP_MS }}&password={{ T_UTL_CURRENT_TIMESTAMP_MS }}"
     response: {
       http_status: 200
       expect_all: {
@@ -82,6 +82,7 @@ actions: {
       }
     }
   }
+  # cleanup action is not possible
 }
 
 
