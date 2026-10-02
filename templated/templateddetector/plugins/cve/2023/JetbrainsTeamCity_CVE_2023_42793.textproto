@@ -118,7 +118,7 @@ actions: {
   }
 }
 
-# should be okay to sleep here for longer, given the fingerprint check. Original is 10s.
+# should be okay to sleep here for longer, given the fingerprint check.
 # long is needed because it's a server refresh.
 
 actions: {
