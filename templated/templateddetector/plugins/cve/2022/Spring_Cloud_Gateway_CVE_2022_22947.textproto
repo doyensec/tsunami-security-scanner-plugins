@@ -61,7 +61,7 @@ actions: {
       http_status: 201
     }
   }
-  cleanup_actions: ["delete_router"]
+  cleanup_actions: ["delete_router", "refresh"]
 }
 
 actions: {
