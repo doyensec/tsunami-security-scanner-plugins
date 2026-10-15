@@ -19,7 +19,11 @@ finding: {
   }
   severity: CRITICAL
   title: "SQL Injection affecting LiteLLM proxy authentication (CVE-2026-42208)"
-  description: "Vulnerable LiteLLM versions are susceptible to SQL injection in token verification queries. An unauthenticated attacker can supply crafted API keys containing malicious SQL syntax to bypass authentication."
+  description: 
+    "Vulnerable LiteLLM versions are susceptible to SQL injection in token verification queries"
+    ". An unauthenticated attacker can supply crafted API keys containing malicious SQL syntax "
+    "to bypass authentication. This plugin only detects the vulnerability if authentication is "
+    "required, since the vulnerability is an authentication bypass."
   recommendation: "Update the version to v1.83.7 or later where SQL queries are properly parameterized."
   related_id: {
     publisher: "CVE"
@@ -51,6 +55,17 @@ actions: {
 }
 
 actions: {
+  name: "test_auth_required"
+  http_request: {
+    method: GET
+    uri: "/v1/models"
+    response: {
+      http_status: 401
+    }
+  }
+}
+
+actions: {
   name: "trigger_sql_injection"
   http_request: {
     method: GET
@@ -76,6 +91,7 @@ actions: {
 workflows: {
   actions: [
     "fingerprint_litellm",
+    "test_auth_required",
     "trigger_sql_injection"
   ]
 }
