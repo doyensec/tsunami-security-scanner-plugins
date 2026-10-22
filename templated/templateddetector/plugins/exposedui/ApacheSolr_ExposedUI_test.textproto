@@ -1,0 +1,361 @@
+# proto-file: proto/templated_plugin_tests.proto
+# proto-message: TemplatedPluginTests
+
+config: {
+  tested_plugin: "ApacheSolr_LFI_SSRF_ExposedUI"
+}
+
+tests: {
+  name: "whenVulnerableOob_returnsTrue"
+  expect_vulnerability: true
+
+  mock_callback_server: {
+    enabled: true
+    has_interaction: true
+  }
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/solr/admin/info/system?wt=json"
+        status: 200
+        body_content: 
+          '{'
+          '  "responseHeader":{'
+          '    "status":0,'
+          '    "QTime":32'
+          '  },'
+          '  ...,'
+          '  "lucene":{'
+          '    "solr-spec-version":"10.0.0",'
+          '    "solr-impl-version":"10.0.0 6c6c48a6f78486130682ea9c1f7a2723af5a87be - anshum - 2026-02-12 16:07:59",'
+          '    "lucene-spec-version":"10.3.2",'
+          '    "lucene-impl-version":"10.3.2 dadfd90b4401947f4d0387669dc94999fbb2c830 - 2025-11-13 10:41:29"'
+          '  },'
+          '  ...'
+          '}'
+      },
+      {
+        uri: "/solr/admin/cores?wt=json&indexInfo=false&_={{ T_UTL_CURRENT_TIMESTAMP_MS }}"
+        status: 200
+        body_content: 
+          '{'
+          '  "responseHeader":{'
+          '    "status":0,'
+          '    "QTime":21'
+          '  },'
+          '  "initFailures":{ },'
+          '  "status":{'
+          '    "configuredcore_shard1_replica_n1":{'
+          '      "name":"configuredcore_shard1_replica_n1",'
+          '      "instanceDir":"/var/solr/data/configuredcore_shard1_replica_n1",'
+          '      "dataDir":"/var/solr/data/configuredcore_shard1_replica_n1/data/",'
+          '      "config":"solrconfig.xml",'
+          '      "schema":"managed-schema.xml",'
+          '      "startTime":"2026-10-22T13:08:38.371Z",'
+          '      "uptime":3527121,'
+          '      "lastPublished":"active",'
+          '      "configVersion":0,'
+          '      "cloud":{'
+          '        "collection":"configuredcore",'
+          '        "shard":"shard1",'
+          '        "replica":"core_node2",'
+          '        "replicaType":"NRT"'
+          '      },'
+          '      "index":{'
+          '        "numDocs":0,'
+          '        "maxDoc":0,'
+          '        "deletedDocs":0,'
+          '        "version":2,'
+          '        "segmentCount":0,'
+          '        "current":true,'
+          '        "hasDeletions":false,'
+          '        "directory":"NRTCachingDirectory(MMapDirectory@/var/solr/data/configuredcore_shard1_replica_n1/data/index lockFactory=org.apache.lucene.store.NativeFSLockFactory@25f109f0; maxCacheMB=48.0 maxMergeSizeMB=4.0)",'
+          '        "segmentsFile":"segments_1",'
+          '        "segmentsFileSizeInBytes":69,'
+          '        "userData":{ },'
+          '        "sizeInBytes":69,'
+          '        "size":"69 bytes"'
+          '      }'
+          '    }'
+          '  }'
+          '}'
+      },
+      {
+        uri: "TSUNAMI_MAGIC_ANY_URI"
+        status: 200
+        body_content: "{}"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenNotVulnerableOob_returnsFalse"
+  expect_vulnerability: false
+
+  mock_callback_server: {
+    enabled: true
+    has_interaction: false
+  }
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/solr/admin/info/system?wt=json"
+        status: 200
+        body_content: 
+          '{'
+          '  "responseHeader":{'
+          '    "status":0,'
+          '    "QTime":32'
+          '  },'
+          '  ...,'
+          '  "lucene":{'
+          '    "solr-spec-version":"10.0.0",'
+          '    "solr-impl-version":"10.0.0 6c6c48a6f78486130682ea9c1f7a2723af5a87be - anshum - 2026-02-12 16:07:59",'
+          '    "lucene-spec-version":"10.3.2",'
+          '    "lucene-impl-version":"10.3.2 dadfd90b4401947f4d0387669dc94999fbb2c830 - 2025-11-13 10:41:29"'
+          '  },'
+          '  ...'
+          '}'
+      },
+      {
+        uri: "/solr/admin/cores?wt=json&indexInfo=false&_={{ T_UTL_CURRENT_TIMESTAMP_MS }}"
+        status: 200
+        body_content: 
+          '{'
+          '  "responseHeader":{'
+          '    "status":0,'
+          '    "QTime":21'
+          '  },'
+          '  "initFailures":{ },'
+          '  "status":{'
+          '    "configuredcore_shard1_replica_n1":{'
+          '      "name":"configuredcore_shard1_replica_n1",'
+          '      "instanceDir":"/var/solr/data/configuredcore_shard1_replica_n1",'
+          '      "dataDir":"/var/solr/data/configuredcore_shard1_replica_n1/data/",'
+          '      "config":"solrconfig.xml",'
+          '      "schema":"managed-schema.xml",'
+          '      "startTime":"2026-10-22T13:08:38.371Z",'
+          '      "uptime":3527121,'
+          '      "lastPublished":"active",'
+          '      "configVersion":0,'
+          '      "cloud":{'
+          '        "collection":"configuredcore",'
+          '        "shard":"shard1",'
+          '        "replica":"core_node2",'
+          '        "replicaType":"NRT"'
+          '      },'
+          '      "index":{'
+          '        "numDocs":0,'
+          '        "maxDoc":0,'
+          '        "deletedDocs":0,'
+          '        "version":2,'
+          '        "segmentCount":0,'
+          '        "current":true,'
+          '        "hasDeletions":false,'
+          '        "directory":"NRTCachingDirectory(MMapDirectory@/var/solr/data/configuredcore_shard1_replica_n1/data/index lockFactory=org.apache.lucene.store.NativeFSLockFactory@25f109f0; maxCacheMB=48.0 maxMergeSizeMB=4.0)",'
+          '        "segmentsFile":"segments_1",'
+          '        "segmentsFileSizeInBytes":69,'
+          '        "userData":{ },'
+          '        "sizeInBytes":69,'
+          '        "size":"69 bytes"'
+          '      }'
+          '    }'
+          '  }'
+          '}'
+      },
+      {
+        uri: "TSUNAMI_MAGIC_ANY_URI"
+        status: 200
+        body_content: "{}"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenVulnerableReflective_returnsTrue"
+  expect_vulnerability: true
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/solr/admin/info/system?wt=json"
+        status: 200
+        body_content: 
+          '{'
+          '  "responseHeader":{'
+          '    "status":0,'
+          '    "QTime":32'
+          '  },'
+          '  ...,'
+          '  "lucene":{'
+          '    "solr-spec-version":"10.0.0",'
+          '    "solr-impl-version":"10.0.0 6c6c48a6f78486130682ea9c1f7a2723af5a87be - anshum - 2026-02-12 16:07:59",'
+          '    "lucene-spec-version":"10.3.2",'
+          '    "lucene-impl-version":"10.3.2 dadfd90b4401947f4d0387669dc94999fbb2c830 - 2025-11-13 10:41:29"'
+          '  },'
+          '  ...'
+          '}'
+      },
+      {
+        uri: "/solr/admin/cores?wt=json&indexInfo=false&_={{ T_UTL_CURRENT_TIMESTAMP_MS }}"
+        status: 200
+        body_content: 
+          '{'
+          '  "responseHeader":{'
+          '    "status":0,'
+          '    "QTime":21'
+          '  },'
+          '  "initFailures":{ },'
+          '  "status":{'
+          '    "configuredcore_shard1_replica_n1":{'
+          '      "name":"configuredcore_shard1_replica_n1",'
+          '      "instanceDir":"/var/solr/data/configuredcore_shard1_replica_n1",'
+          '      "dataDir":"/var/solr/data/configuredcore_shard1_replica_n1/data/",'
+          '      "config":"solrconfig.xml",'
+          '      "schema":"managed-schema.xml",'
+          '      "startTime":"2026-10-22T13:08:38.371Z",'
+          '      "uptime":3527121,'
+          '      "lastPublished":"active",'
+          '      "configVersion":0,'
+          '      "cloud":{'
+          '        "collection":"configuredcore",'
+          '        "shard":"shard1",'
+          '        "replica":"core_node2",'
+          '        "replicaType":"NRT"'
+          '      },'
+          '      "index":{'
+          '        "numDocs":0,'
+          '        "maxDoc":0,'
+          '        "deletedDocs":0,'
+          '        "version":2,'
+          '        "segmentCount":0,'
+          '        "current":true,'
+          '        "hasDeletions":false,'
+          '        "directory":"NRTCachingDirectory(MMapDirectory@/var/solr/data/configuredcore_shard1_replica_n1/data/index lockFactory=org.apache.lucene.store.NativeFSLockFactory@25f109f0; maxCacheMB=48.0 maxMergeSizeMB=4.0)",'
+          '        "segmentsFile":"segments_1",'
+          '        "segmentsFileSizeInBytes":69,'
+          '        "userData":{ },'
+          '        "sizeInBytes":69,'
+          '        "size":"69 bytes"'
+          '      }'
+          '    }'
+          '  }'
+          '}'
+      },
+      {
+        uri: "/solr/configuredcore_shard1_replica_n1/debug/dump?param=ContentStreams&stream.url=file:///etc/passwd"
+        status: 200
+        body_content: '{..., "stream":"... root:x:0:0 ...", ...}'
+      },
+      {
+        uri: "TSUNAMI_MAGIC_ANY_URI"
+        status: 200
+        body_content: "{}"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenNotVulnerableReflective_returnsFalse"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/solr/admin/info/system?wt=json"
+        status: 200
+        body_content: 
+          '{'
+          '  "responseHeader":{'
+          '    "status":0,'
+          '    "QTime":32'
+          '  },'
+          '  ...,'
+          '  "lucene":{'
+          '    "solr-spec-version":"10.0.0",'
+          '    "solr-impl-version":"10.0.0 6c6c48a6f78486130682ea9c1f7a2723af5a87be - anshum - 2026-02-12 16:07:59",'
+          '    "lucene-spec-version":"10.3.2",'
+          '    "lucene-impl-version":"10.3.2 dadfd90b4401947f4d0387669dc94999fbb2c830 - 2025-11-13 10:41:29"'
+          '  },'
+          '  ...'
+          '}'
+      },
+      {
+        uri: "/solr/admin/cores?wt=json&indexInfo=false&_={{ T_UTL_CURRENT_TIMESTAMP_MS }}"
+        status: 200
+        body_content: 
+          '{'
+          '  "responseHeader":{'
+          '    "status":0,'
+          '    "QTime":21'
+          '  },'
+          '  "initFailures":{ },'
+          '  "status":{'
+          '    "configuredcore_shard1_replica_n1":{'
+          '      "name":"configuredcore_shard1_replica_n1",'
+          '      "instanceDir":"/var/solr/data/configuredcore_shard1_replica_n1",'
+          '      "dataDir":"/var/solr/data/configuredcore_shard1_replica_n1/data/",'
+          '      "config":"solrconfig.xml",'
+          '      "schema":"managed-schema.xml",'
+          '      "startTime":"2026-10-22T13:08:38.371Z",'
+          '      "uptime":3527121,'
+          '      "lastPublished":"active",'
+          '      "configVersion":0,'
+          '      "cloud":{'
+          '        "collection":"configuredcore",'
+          '        "shard":"shard1",'
+          '        "replica":"core_node2",'
+          '        "replicaType":"NRT"'
+          '      },'
+          '      "index":{'
+          '        "numDocs":0,'
+          '        "maxDoc":0,'
+          '        "deletedDocs":0,'
+          '        "version":2,'
+          '        "segmentCount":0,'
+          '        "current":true,'
+          '        "hasDeletions":false,'
+          '        "directory":"NRTCachingDirectory(MMapDirectory@/var/solr/data/configuredcore_shard1_replica_n1/data/index lockFactory=org.apache.lucene.store.NativeFSLockFactory@25f109f0; maxCacheMB=48.0 maxMergeSizeMB=4.0)",'
+          '        "segmentsFile":"segments_1",'
+          '        "segmentsFileSizeInBytes":69,'
+          '        "userData":{ },'
+          '        "sizeInBytes":69,'
+          '        "size":"69 bytes"'
+          '      }'
+          '    }'
+          '  }'
+          '}'
+      },
+      {
+        uri: "/solr/configuredcore_shard1_replica_n1/debug/dump?param=ContentStreams&stream.url=file:///etc/passwd"
+        status: 200
+        body_content: '{..., "stream":"... something random ...", ...}'
+      },
+      {
+        uri: "TSUNAMI_MAGIC_ANY_URI"
+        status: 200
+        body_content: "{}"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenRandomServer_returnsFalse"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "TSUNAMI_MAGIC_ANY_URI"
+        status: 200
+        body_content: "Hello world"
+      }
+    ]
+  }
+}
