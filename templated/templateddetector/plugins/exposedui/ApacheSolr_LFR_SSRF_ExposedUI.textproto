@@ -7,7 +7,7 @@
 
 info: {
   type: VULN_DETECTION
-  name: "ApacheSolr_LFI_SSRF_ExposedUI"
+  name: "ApacheSolr_LFR_SSRF_ExposedUI"
   author: 
     "Robert Dick (robert@doyensec.com) for the Templated version, "
     "C4o (syttcasd@gmail.com) for the original Java version"
@@ -17,7 +17,7 @@ info: {
 finding: {
   main_id: {
     publisher: "GOOGLE"
-    value: "ApacheSolr_LFI_SSRF_ExposedUI"
+    value: "ApacheSolr_LFR_SSRF_ExposedUI"
   }
   severity: HIGH
   title: "Apache Solr Exposed UI Local File Read and SSRF"
