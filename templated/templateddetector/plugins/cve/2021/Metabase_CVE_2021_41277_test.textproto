@@ -1,0 +1,76 @@
+# proto-file: proto/templated_plugin_tests.proto
+# proto-message: TemplatedPluginTests
+
+config: {
+  tested_plugin: "Metabase_CVE_2021_41277"
+}
+
+tests: {
+  name: "whenVulnerableReflective_returnsTrue"
+  expect_vulnerability: true
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/"
+        status: 200
+        body_content: "... <title>Metabase</title> ..."
+      },
+      {
+        uri: "/api/geojson?url=file:///etc/passwd"
+        status: 200
+        body_content: 
+          "root:x:0:0:root:/root:/bin/ash\n"
+          "bin:x:1:1:bin:/bin:/sbin/nologin ..."
+      }
+    ]
+  }
+}
+
+
+
+tests: {
+  name: "whenNotVulnerable_returnsFalse"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/"
+        status: 200
+        body_content: "... <title>Metabase</title> ..."
+      },
+      {
+        uri: "/api/geojson?url=file:///etc/passwd"
+        status: 403
+        body_content: 
+          "You don't have permissions to do that."
+      }
+    ]
+  }
+}
+
+
+tests: {
+  name: "whenRandomServer_returnsFalse"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/"
+        status: 200
+        body_content: "root:x:0:0:root:/root:/bin/ash"
+      },
+      {
+        uri: "/api/geojson?url=file:///etc/passwd"
+        status: 200
+        body_content: 
+          "root:x:0:0:root:/root:/bin/ash"
+      }
+    ]
+  }
+}
+
+
+
