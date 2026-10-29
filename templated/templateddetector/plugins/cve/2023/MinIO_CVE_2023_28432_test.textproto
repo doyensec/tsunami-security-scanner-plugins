@@ -1,0 +1,104 @@
+# proto-file: proto/templated_plugin_tests.proto
+# proto-message: TemplatedPluginTests
+
+config: {
+  tested_plugin: "MinIO_CVE_2023_28432"
+}
+
+tests: {
+  name: "whenVulnerable_returnsTrue"
+  expect_vulnerability: true
+
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/"
+        status: 403
+        headers: [
+          { name: "Server" value: "MinIO" }
+        ]
+        body_content: 
+          "<Error><Code>AccessDenied</Code><Message>Access Denied.</Message>"
+          "<Resource>/</Resource><RequestId>18E307834CE7C7C8</RequestId><Hos"
+          "tId>e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b"
+          "855</HostId></Error>"
+      },
+      {
+        uri: "/minio/bootstrap/v1/verify"
+        status: 200
+        body_content: 
+          '{"MinioEndpoints":[{"Legacy":true,"SetCount":1,"DrivesPerSet":4,"'
+          'Endpoints":[{"Scheme":"http","Opaque":"","User":null,"Host":"mini'
+          'o-vuln-1:9000","Path":"/data","RawPath":"","OmitHost":false,"Forc'
+          'eQuery":false,"RawQuery":"","Fragment":"","RawFragment":"","IsLoc'
+          'al":true},{"Scheme":"http","Opaque":"","User":null,"Host":"minio-'
+          'vuln-2:9000","Path":"/data","RawPath":"","OmitHost":false,"ForceQ'
+          'uery":false,"RawQuery":"","Fragment":"","RawFragment":"","IsLocal'
+          '":false},{"Scheme":"http","Opaque":"","User":null,"Host":"minio-v'
+          'uln-3:9000","Path":"/data","RawPath":"","OmitHost":false,"ForceQu'
+          'ery":false,"RawQuery":"","Fragment":"","RawFragment":"","IsLocal"'
+          ':false},{"Scheme":"http","Opaque":"","User":null,"Host":"minio-vu'
+          'ln-4:9000","Path":"/data","RawPath":"","OmitHost":false,"ForceQue'
+          'ry":false,"RawQuery":"","Fragment":"","RawFragment":"","IsLocal":'
+          'false}],"CmdLine":"http://minio-vuln-1:9000//data http://minio-vu'
+          'ln-2:9000//data http://minio-vuln-3:9000//data http://minio-vuln-'
+          '4:9000//data","Platform":"OS: linux | Arch: arm64"}],"MinioEnv":{'
+          '"MINIO_API_PORT_NUMBER":"9000","MINIO_BASE_DIR":"/opt/bitnami/min'
+          'io","MINIO_BIN_DIR":"/opt/bitnami/minio/bin","MINIO_CERTS_DIR":"/'
+          'certs","MINIO_CONSOLE_PORT_NUMBER":"9001","MINIO_DAEMON_GROUP":"m'
+          'inio","MINIO_DAEMON_USER":"minio","MINIO_DATA_DIR":"/data","MINIO'
+          '_DEFAULT_BUCKETS":"","MINIO_DISTRIBUTED_MODE_ENABLED":"yes","MINI'
+          'O_DISTRIBUTED_NODES":"minio-vuln-1,minio-vuln-2,minio-vuln-3,mini'
+          'o-vuln-4","MINIO_FORCE_NEW_KEYS":"no","MINIO_LOGS_DIR":"/opt/bitn'
+          'ami/minio/log","MINIO_ROOT_PASSWORD":"miniosecret","MINIO_ROOT_US'
+          'ER":"minio","MINIO_SCHEME":"http","MINIO_SECRETS_DIR":"/opt/bitna'
+          'mi/minio/secrets","MINIO_SERVER_URL":"http://localhost:9000","MIN'
+          'IO_SKIP_CLIENT":"yes","MINIO_STARTUP_TIMEOUT":"10"}}'
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenNotVulnerable_returnsFalse"
+  expect_vulnerability: false
+
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/"
+        status: 403
+        headers: [
+          { name: "Server" value: "MinIO" }
+        ]
+        body_content: 
+          "<Error><Code>AccessDenied</Code><Message>Access Denied.</Message>"
+          "<Resource>/</Resource><RequestId>18E307834CE7C7C8</RequestId><Hos"
+          "tId>e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b"
+          "855</HostId></Error>"
+      },
+      {
+        uri: "/minio/bootstrap/v1/verify"
+        status: 403
+        body_content: 'JWT token missing'
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenRandomServer_returnsFalse"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "TSUNAMI_MAGIC_ANY_URI"
+        status: 200
+        body_content: "abc"
+      }
+    ]
+  }
+}
