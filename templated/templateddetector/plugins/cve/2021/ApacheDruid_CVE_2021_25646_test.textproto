@@ -1,0 +1,121 @@
+# proto-file: proto/templated_plugin_tests.proto
+# proto-message: TemplatedPluginTests
+
+config: {
+  tested_plugin: "ApacheDruid_CVE_2021_25646"
+}
+
+tests: {
+  name: "whenVulnerableReflective_returnsTrue"
+  expect_vulnerability: true
+
+  mock_callback_server: {
+    enabled: false
+    has_interaction: false
+  }
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/"
+        status: 200
+        body_content: "... <title>Apache Druid</title> ..."
+      },
+      {
+        uri: "/druid/indexer/v1/sampler"
+        status: 200
+        body_content: "{timestamp:\"1622212345709\",kadkand: \"1f21f020c9\"}"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenNotVulnerableReflective_returnsFalse"
+  expect_vulnerability: false
+
+  mock_callback_server: {
+    enabled: false
+    has_interaction: false
+  }
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/"
+        status: 200
+        body_content: "... <title>Apache Druid</title> ..."
+      },
+      {
+        uri: "/druid/indexer/v1/sampler"
+        status: 200
+        body_content: "{timestamp:\"1622212345709\",kadkand: \"...\"}"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenVulnerableOob_returnsTrue"
+  expect_vulnerability: true
+
+  mock_callback_server: {
+    enabled: true
+    has_interaction: true
+  }
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/"
+        status: 200
+        body_content: "... <title>Apache Druid</title> ..."
+      },
+      {
+        uri: "/druid/indexer/v1/sampler"
+        status: 200
+        body_content: "{timestamp:\"1622212345709\",kadkand: \"abc\"}"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenNotVulnerableOob_returnsFalse"
+  expect_vulnerability: false
+
+  mock_callback_server: {
+    enabled: true
+    has_interaction: false
+  }
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/"
+        status: 200
+        body_content: "... <title>Apache Druid</title> ..."
+      },
+      {
+        uri: "/druid/indexer/v1/sampler"
+        status: 200
+        body_content: "{timestamp:\"1622212345709\",kadkand: \"abc\"}"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenRandomServer_returnsFalse"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "TSUNAMI_MAGIC_ANY_URI"
+        status: 200
+        body_content: "abc"
+      }
+    ]
+  }
+}
