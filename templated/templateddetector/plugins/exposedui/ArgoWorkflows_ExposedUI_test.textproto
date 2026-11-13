@@ -1,0 +1,80 @@
+# proto-file: proto/templated_plugin_tests.proto
+# proto-message: TemplatedPluginTests
+
+config: {
+  tested_plugin: "ArgoWorkflows_ExposedUI"
+}
+
+tests: {
+  name: "whenVulnerableOOB_returnsVuln"
+  expect_vulnerability: true
+
+  mock_callback_server: {
+    enabled: true
+    has_interaction: true
+  }
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/"
+        status: 200
+        body_content: '... <title>Argo</title> ...'
+      },
+      {
+        uri: "/api/v1/workflows/"
+        status: 200
+        body_content: '{"metadata":{"resourceVersion":"2313"},"items":null}'
+      },
+      {
+        uri: "TSUNAMI_MAGIC_ANY_URI"
+        status: 200
+        body_content: "{ ... }"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenNotVulnerableOOB_returnsNotVuln"
+  expect_vulnerability: false
+
+  mock_callback_server: {
+    enabled: true
+    has_interaction: false
+  }
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/"
+        status: 200
+        body_content: '... <title>Argo</title> ...'
+      },
+      {
+        uri: "/api/v1/workflows/"
+        status: 200
+        body_content: '{"metadata":{"resourceVersion":"2313"},"items":null}'
+      },
+      {
+        uri: "TSUNAMI_MAGIC_ANY_URI"
+        status: 200
+        body_content: "{ ... }"
+      }
+    ]
+  }
+}
+
+
+tests: {
+  name: "whenRandomServer_returnsNoVuln"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri:  "TSUNAMI_MAGIC_ANY_URI"
+        status: 200
+        body_content: " ... "
+      }
+    ]
+  }
+}
