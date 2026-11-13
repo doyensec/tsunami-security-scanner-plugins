@@ -2,11 +2,11 @@
 # proto-message: TemplatedPluginTests
 
 config: {
-  tested_plugin: "ARGOCD_ExposedUI"
+  tested_plugin: "ArgoCD_ExposedUI"
 }
 
 tests: {
-  name: "whenVulnerable_returnsVuln"
+  name: "whenVulnerableOOB_returnsVuln"
   expect_vulnerability: true
 
   mock_callback_server: {
@@ -16,85 +16,171 @@ tests: {
   mock_http_server: {
     mock_responses: [
       {
-        uri: "/ui"
+        uri: "/"
         status: 200
-        body_content: '<title>Livy - Sessions</title>'
+        body_content: '... <title>Argo CD</title> ...'
       },
       {
-        uri: "/batches"
-        status: 201
-        body_content:
-          '{"id":6,"name":null,"owner":null,"proxyUser":null,"state":"running","appId":null,"appInfo":{"driverLogUrl":null,"sparkUiUrl":null},"log":["stdout: ","\nstderr: "]}'
-        condition: {
-          body_content: '{"file":"{{ T_CBS_URI }}"}'
-          headers: [
-            {
-              name: "Content-Type",
-              value: "application/json"
-            }
-          ]
-        }
+        uri: "/api/v1/projects?fields=items.metadata.name"
+        status: 200
+        body_content: '{"items":[{"metadata":{"name":"default"}}]}'
       },
       {
-        uri: "/batches/6"
+        uri: "/api/v1/clusters"
         status: 200
-      }
-    ]
-  }
-}
-
-
-tests: {
-  name: "whenNotApcheLivy_returnsNoVuln"
-  expect_vulnerability: false
-
-  mock_http_server: {
-    mock_responses: [
+        body_content: 
+          '{"metadata":{},"items":[{"server":"https://kubernetes.default.svc"'
+          ',"name":"in-cluster","config":{"tlsClientConfig":{"insecure":false'
+          '}},"connectionState":{"status":"Unknown","message":"Cluster has no'
+          ' applications and is not being monitored.","attemptedAt":"2026-11-'
+          '12T15:00:29Z"},"serverVersion":"1.37.0","info":{"connectionState":'
+          '{"status":"Unknown","message":"Cluster has no applications and is '
+          'not being monitored.","attemptedAt":"2026-11-12T15:00:29Z"},"serve'
+          'rVersion":"1.37.0","cacheInfo":{},"applicationsCount":0},"configHa'
+          'sh":734506163208423476}]}'
+      },
       {
-        uri:  "/api/v1/main/usages/all"
-        status: 400
-        body_content: "..."
+        uri: "TSUNAMI_MAGIC_ANY_URI"
+        status: 200
+        body_content: "{ ... }"
       }
     ]
   }
 }
 
 tests: {
-  name: "whenNoCallback_returnsFalse"
+  name: "whenNotVulnerableOOB_returnsNotVuln"
   expect_vulnerability: false
 
   mock_callback_server: {
     enabled: true
     has_interaction: false
   }
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/"
+        status: 200
+        body_content: '... <title>Argo CD</title> ...'
+      },
+      {
+        uri: "/api/v1/projects?fields=items.metadata.name"
+        status: 200
+        body_content: "{ ... \"name\":\"exampleprojectname\", ... }"
+      },
+      {
+        uri: "/api/v1/clusters"
+        status: 200
+        body_content: "{ ... \"name\":\"exampleclustername\", ... }"
+      },
+      {
+        uri: "TSUNAMI_MAGIC_ANY_URI"
+        status: 200
+        body_content: "{ ... }"
+      }
+    ]
+  }
+}
+
+
+tests: {
+  name: "whenVulnerableReflective_returnsVuln"
+  expect_vulnerability: true
+
+  mock_callback_server: {
+    enabled: false
+    has_interaction: false
+  }
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/"
+        status: 200
+        body_content: '... <title>Argo CD</title> ...'
+      },
+      {
+        uri: "/api/v1/projects?fields=items.metadata.name"
+        status: 200
+        body_content: '{"items":[{"metadata":{"name":"default"}}]}'
+      },
+      {
+        uri: "/api/v1/clusters"
+        status: 200
+        body_content: 
+          '{"metadata":{},"items":[{"server":"https://kubernetes.default.svc"'
+          ',"name":"in-cluster","config":{"tlsClientConfig":{"insecure":false'
+          '}},"connectionState":{"status":"Unknown","message":"Cluster has no'
+          ' applications and is not being monitored.","attemptedAt":"2026-11-'
+          '12T15:00:29Z"},"serverVersion":"1.37.0","info":{"connectionState":'
+          '{"status":"Unknown","message":"Cluster has no applications and is '
+          'not being monitored.","attemptedAt":"2026-11-12T15:00:29Z"},"serve'
+          'rVersion":"1.37.0","cacheInfo":{},"applicationsCount":0},"configHa'
+          'sh":734506163208423476}]}'
+      },    
+      {
+        uri: "/api/v1/applications/tsunami-security-scanner-{{ T_UTL_CURRENT_TIMESTAMP_MS }}?appNamespace=argocd"
+        status: 200
+        body_content: 
+          '... 133713371337 ...'
+          '"images": ['
+          '"curlimages/curl:7.78.0",'
+          '"nginx:1.24"'
+          '] ...'
+      },
+      {
+        uri: "TSUNAMI_MAGIC_ANY_URI"
+        status: 200
+        body_content: "{ ... }"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenNotVulnerableReflective_returnsNotVuln"
+  expect_vulnerability: false
+
+  mock_callback_server: {
+    enabled: false
+    has_interaction: false
+  }
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/"
+        status: 200
+        body_content: '... <title>Argo CD</title> ...'
+      },
+      {
+        uri: "/api/v1/projects?fields=items.metadata.name"
+        status: 200
+        body_content: "{ ... \"name\":\"exampleprojectname\", ... }"
+      },
+      {
+        uri: "/api/v1/clusters"
+        status: 200
+        body_content: "{ ... \"name\":\"exampleclustername\", ... }"
+      },
+      {
+        uri: "TSUNAMI_MAGIC_ANY_URI"
+        status: 200
+        body_content: "{ ... }"
+      }
+    ]
+  }
+}
+
+
+tests: {
+  name: "whenRandomServer_returnsNoVuln"
+  expect_vulnerability: false
 
   mock_http_server: {
     mock_responses: [
       {
-        uri: "/ui"
+        uri:  "TSUNAMI_MAGIC_ANY_URI"
         status: 200
-        body_content: '<title>Livy - Sessions</title>'
-      },
-      {
-        uri: "/batches"
-        status: 201
-        body_content:
-            '{"id":6,"name":null,"owner":null,"proxyUser":null,"state":"running","appId":null,"appInfo":{"driverLogUrl":null,"sparkUiUrl":null},"log":["stdout: ","\nstderr: "]}'
-        condition: {
-          body_content: '{"file":"{{ T_CBS_URI }}"}'
-          headers: [
-            {
-              name: "Content-Type",
-              value: "application/json"
-            }
-          ]
-        }
-      },
-      {
-        uri: "/batches/6"
-        status: 200
-        body_content:
-            '{"id":0,"code":"import subprocess\\nsubprocess.run([\\"wget\\",\\"{{ T_CBS_URI }}\\"])","state":"available","output":{"status":"ok","execution_count":0,"data":{"text/plain":"/opt"}},"progress":1.0,"started":1754515902001,"completed":1754515902003}'
+        body_content: " ... "
       }
     ]
   }
