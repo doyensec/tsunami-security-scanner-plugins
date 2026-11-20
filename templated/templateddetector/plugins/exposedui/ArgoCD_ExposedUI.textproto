@@ -1,0 +1,119 @@
+# proto-file: proto/templated_plugin.proto
+# proto-message: TemplatedPlugin
+
+###############
+# PLUGIN INFO #
+###############
+
+info: {
+  type: VULN_DETECTION
+  name: "ApacheLivy_ExposedUI"
+  author: "joernNNN"
+  version: "0.1"
+}
+
+finding: {
+  main_id: {
+    publisher: "GOOGLE"
+    value: "APACHELIVY_EXPOSED_UI"
+  }
+  title: "Apache Livy Exposed instance"
+  description: "Apache Livy instance is exposed and can be used to compromise the system."
+  recommendation:
+    "Configure authentication or ensure the Apache Livy instance is not exposed "
+    "to the network. See "
+    "https://livy.apache.org/get-started/ for details."
+  severity: CRITICAL
+}
+
+###########
+# ACTIONS #
+###########
+
+# TODO: fingerprint
+
+actions: {
+  name: "argocd_exposed_ui_fingerprint"
+  http_request: {
+    method: GET
+    uri: "/ui"
+    response: {
+      http_status: 200
+      expect_all: {
+        conditions: { body {} contains: '<title>Livy - Sessions</title>' }
+      }
+    }
+  }
+}
+
+actions: {
+  name: "get_project"
+  http_request: {
+    method: GET
+    uri: "/api/v1/projects?fields=items.metadata.name"
+    response: {
+      http_status: 200
+      expect_all: {
+        conditions: { body {} contains: '"items":' }
+      }
+      extract_all: {
+        patterns: [
+          {
+            from_body: {}
+            regexp: "\"name\":\"[\"]+\","
+            variable_name: "PROJECT_NAME"
+          }
+        ]
+      }
+    }
+  }
+}
+
+actions: {
+  name: "get_cluster"
+  http_request: {
+    method: GET
+    uri: "/api/v1/clusters"
+    response: {
+      http_status: 200
+      expect_all: {
+        conditions: { body {} contains: '"items":' }
+      }
+      extract_all: {
+        patterns: [
+          {
+            from_body: {}
+            regexp: "\"name\":\"[\"]+\","
+            variable_name: "CLUSTER_NAME"
+          }
+        ]
+      }
+    }
+  }
+}
+
+
+
+
+
+actions: {
+  name: "sleep_for_callback"
+  utility: { sleep: { duration_ms: 4000 } }
+}
+actions: {
+  name: "check_callback_server_logs"
+  callback_server: { action_type: CHECK }
+}
+
+#############
+# WORKFLOWS #
+#############
+
+workflows: {
+  actions: [
+    "livy_exposed_ui_fingerprint",
+    "create_batches",
+    "sleep_for_callback",
+    "check_callback_server_logs"
+  ]
+}

@@ -1,0 +1,139 @@
+# proto-file: proto/templated_plugin_tests.proto
+# proto-message: TemplatedPluginTests
+
+config: {
+    tested_plugin: "Kubeflow_ExposedUI"
+}
+
+tests: {
+    name: "whenVulnerable_returnsTrue"
+    expect_vulnerability: true
+
+    mock_callback_server: {
+        enabled: true
+        has_interaction: true
+    }
+
+    mock_http_server: {
+        mock_responses: [
+            {
+                uri: "/"
+                status: 200
+                body_content: "<!DOCTYPE html><html><head><title>Kubeflow Central Dashboard</title></head><body></body></html>"
+            },
+            {
+                uri: "/api/workgroup/env-info"
+                status: 200
+                body_content: '{"user":"user@example.com","platform":{"kubeflowVersion":"1.10.0","provider":"other://","providerName":"other","logoutUrl":"/logout"},"namespaces":[{"user":"user@example.com","namespace":"kubeflow-user-example-com","role":"owner"}],"isClusterAdmin":false}'
+            },
+            {
+                uri: "/pipeline/apis/v2beta1/experiments"
+                status: 200
+                body_content: '{"experiment_id":"7b4a6f2e-1c3d-4e5f-8a9b-0c1d2e3f4a5b","display_name":"TsunamiExperiment-1577836800000","namespace":"kubeflow-user-example-com","storage_state":"AVAILABLE"}'
+            },
+            {
+                uri: "/pipeline/apis/v2beta1/pipelines/upload?name=TsunamiPipeline-{{ T_UTL_CURRENT_TIMESTAMP_MS }}&description=&namespace=kubeflow-user-example-com"
+                status: 200
+                body_content: '{"pipeline_id":"3f1c2b4a-5d6e-4f70-8192-a3b4c5d6e7f8","display_name":"TsunamiPipeline-1577836800000","namespace":"kubeflow-user-example-com"}'
+            },
+            {
+                uri: "/pipeline/apis/v2beta1/pipelines/3f1c2b4a-5d6e-4f70-8192-a3b4c5d6e7f8/versions?page_size=1&sort_by=created_at%20desc"
+                status: 200
+                body_content: '{"pipeline_versions":[{"pipeline_id":"3f1c2b4a-5d6e-4f70-8192-a3b4c5d6e7f8","pipeline_version_id":"9d2e8c7b-6a5f-4e3d-2c1b-0a9f8e7d6c5b","display_name":"TsunamiPipeline-1577836800000"}],"total_size":1}'
+            },
+            {
+                uri: "/pipeline/apis/v2beta1/runs"
+                status: 200
+                body_content: '{"run_id":"5e8b1a2c-3d4e-4f5a-9b6c-7d8e9f0a1b2c","experiment_id":"7b4a6f2e-1c3d-4e5f-8a9b-0c1d2e3f4a5b","display_name":"TsunamiRun-1577836800000","state":"PENDING"}'
+            },
+            {
+                uri: "/pipeline/apis/v2beta1/pipelines/3f1c2b4a-5d6e-4f70-8192-a3b4c5d6e7f8/versions/9d2e8c7b-6a5f-4e3d-2c1b-0a9f8e7d6c5b"
+                status: 200
+                body_content: "{}"
+            },
+            {
+                uri: "/pipeline/apis/v2beta1/pipelines/3f1c2b4a-5d6e-4f70-8192-a3b4c5d6e7f8"
+                status: 200
+                body_content: "{}"
+            },
+            {
+                uri: "/pipeline/apis/v2beta1/runs/5e8b1a2c-3d4e-4f5a-9b6c-7d8e9f0a1b2c"
+                status: 200
+                body_content: "{}"
+            },
+            {
+                uri: "/pipeline/apis/v2beta1/experiments/7b4a6f2e-1c3d-4e5f-8a9b-0c1d2e3f4a5b"
+                status: 200
+                body_content: "{}"
+            }
+        ]
+    }
+}
+
+tests: {
+name: "whenNoCallback_returnsFalse"
+expect_vulnerability: false
+
+    mock_callback_server: {
+        enabled: true
+        has_interaction: false
+    }
+
+    mock_http_server: {
+        mock_responses: [
+            {
+                uri: "/"
+                status: 200
+                body_content: "<!DOCTYPE html><html><head><title>Kubeflow Central Dashboard</title></head><body></body></html>"
+            },
+            {
+                uri: "/api/workgroup/env-info"
+                status: 200
+                body_content:
+                    '{"user":"user@example.com","namespaces":[{"user":"user@example.com","namespace":"kubeflow-user-example-com","role":"owner"}],"isClusterAdmin":false}'
+            },
+            {
+                uri: "/pipeline/apis/v2beta1/experiments"
+                status: 200
+                body_content: '{"experiment_id":"7b4a6f2e-1c3d-4e5f-8a9b-0c1d2e3f4a5b","display_name":"TsunamiExperiment-1577836800000"}'
+            },
+            {
+                uri: "/pipeline/apis/v2beta1/pipelines/upload?name=TsunamiPipeline-{{ T_UTL_CURRENT_TIMESTAMP_MS }}&description=&namespace=kubeflow-user-example-com"
+                status: 200
+                body_content: '{"pipeline_id":"3f1c2b4a-5d6e-4f70-8192-a3b4c5d6e7f8"}'
+            },
+            {
+                uri: "/pipeline/apis/v2beta1/pipelines/3f1c2b4a-5d6e-4f70-8192-a3b4c5d6e7f8/versions"
+                status: 200
+                body_content:
+                    '{"pipeline_versions":[{"pipeline_id":"3f1c2b4a-5d6e-4f70-8192-a3b4c5d6e7f8","pipeline_version_id":"9d2e8c7b-6a5f-4e3d-2c1b-0a9f8e7d6c5b"}],"total_size":1}'
+            },
+            {
+                uri: "/pipeline/apis/v2beta1/runs"
+                status: 200
+                body_content: '{"run_id":"5e8b1a2c-3d4e-4f5a-9b6c-7d8e9f0a1b2c","state":"PENDING"}'
+            }
+        ]
+    }
+}
+
+
+tests: {
+    name: "whenNotKubeflow_returnsFalse"
+    expect_vulnerability: false
+
+    mock_callback_server: {
+        enabled: true
+        has_interaction: false
+    } 
+    
+    mock_http_server: {
+        mock_responses: [
+            {
+                uri: "TSUNAMI_MAGIC_ANY_URI"
+                status: 200
+                body_content: "Hello world"
+            }
+        ]   
+    }
+}
